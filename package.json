@@ -1,0 +1,48 @@
+{
+  "name": "@impulse/testing",
+  "version": "0.1.0",
+  "description": "E2E testing library for Next.js applications with Puppeteer",
+  "type": "module",
+  "main": "./dist/cli/index.js",
+  "types": "./dist/cli/index.d.ts",
+  "bin": {
+    "impulse-testing": "./bin/impulse-testing.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/cli/index.ts",
+    "start": "node dist/cli/index.js",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist .next"
+  },
+  "keywords": [
+    "e2e",
+    "testing",
+    "puppeteer",
+    "nextjs",
+    "test-automation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "packageManager": "pnpm@10.15.0",
+  "devDependencies": {
+    "@types/node": "^24.7.2",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "commander": "^14.0.1",
+    "execa": "^9.6.0",
+    "next": "^15.5.4",
+    "puppeteer": "^24.24.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "zod": "^4.1.12"
+  }
+}

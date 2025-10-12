@@ -1,0 +1,458 @@
+---
+alwaysApply: true
+---
+### 2. Testing Module (`src/runner/`)
+
+**Responsibility**: Execute user stories from JSON files using Puppeteer in headless mode.
+
+**Core Functionality**:
+- Load user story JSON files from `.testing/stories/`
+- Execute lifecycle commands (start app, setup database)
+- Run Puppeteer in headless mode
+- Execute each step's actions sequentially
+- Validate assertions at each step
+- Capture screenshots (based on config)
+- Generate test reports
+- Clean up resources (stop app, teardown database)
+
+**Execution Flow**:
+1. Read configuration from `.testing/config.json`
+2. Execute `appStartCommand` to start the tested application
+3. Execute database `setupCommand` (if configured)
+4. For each story file:
+   - Load story JSON
+   - Launch headless Puppeteer browser
+   - Execute each step's actions
+   - Validate each step's assertions
+   - Capture screenshots (if configured)
+   - Record step results (pass/fail)
+5. Execute database `teardownCommand` (if configured)
+6. Execute `appStopCommand` to stop the tested application
+7. Generate final report (console, JSON, HTML)
+8. Exit with appropriate code (0 = success, 1 = failure)
+
+**Data Structures**:
+
+**User Story File** (`.testing/stories/{story-id}.json`):
+```json
+{
+  "id": "string",
+  "name": "string",
+  "description": "string",
+  "tags": ["string"],
+  "created": "ISO 8601 timestamp",
+  "modified": "ISO 8601 timestamp",
+  "version": "1.0",
+  "steps": [
+    {
+      "index": 0,
+      "description": "string",
+      "actions": [
+        {
+          "type": "navigate|click|input|select|check|uncheck|wait|...",
+          "selector": "CSS selector (optional)",
+          "value": "string (optional)",
+          "options": {}
+        }
+      ],
+      "assertions": [
+        {
+          "type": "elementExists|textEquals|urlContains|...",
+          "selector": "CSS selector (optional)",
+          "expected": "any",
+          "options": {}
+        }
+      ],
+      "screenshot": {
+        "filename": "string",
+        "path": "relative path",
+        "timestamp": "ISO 8601"
+      }
+    }
+  ]
+}
+```
+
+**Action Types**:
+- Navigation: `navigate`, `goBack`, `goForward`, `reload`
+- Interaction: `click`, `input`, `select`, `check`, `uncheck`, `hover`, `focus`, `blur`
+- Scrolling: `scroll`, `scrollIntoView`
+- Wait: `wait`, `waitForSelector`, `waitForNavigation`
+- File: `uploadFile`
+- Advanced: `executeScript`, `screenshot`
+
+**Assertion Types**:
+- Element: `elementExists`, `elementNotExists`, `elementVisible`, `elementEnabled`, `elementChecked`
+- Content: `textEquals`, `textContains`, `textMatches`, `valueEquals`, `attributeEquals`
+- URL: `urlEquals`, `urlContains`, `urlMatches`
+- Count: `elementCount`
+- Page: `titleEquals`, `titleContains`
+
+**Interface with other modules**:
+- Can be invoked by **CLI Module** or **Web UI Module**
+- Uses configuration loaded by **CLI Module**
+
+---
+
+### 3. Web UI Module (`src/webui/`)
+
+**Responsibility**: Provide an interactive Next.js interface for managing user stories and viewing test results.
+
+**Core Functionality**:
+- Run Next.js server on port 3303
+- List all user stories from `.testing/stories/`
+- View individual story details (steps, actions, assertions)
+- Display screenshots captured during tests
+- Edit story steps, actions, and assertions
+- Configure when screenshots are taken
+- Trigger test execution (single story or all stories)
+- Display real-time test execution progress
+- Show test results and failure details
+- Edit `.testing/config.json` through UI
+
+**Technology**:
+- **Next.js App Router** (confirmed technology)
+- Port: **3303** (fixed, non-configurable)
+
+**UI Pages/Features**:
+- Dashboard: Overview of all stories, recent test runs, statistics
+- Stories List: Table/grid of all user stories with tags, status, last run
+- Story Editor: Edit story metadata, steps, actions, assertions
+- Story Viewer: View story execution with screenshots and results
+- Configuration Editor: Edit `.testing/config.json` through UI
+- Test Runner: Trigger tests and show real-time progress
+- Reports Viewer: View test reports and failure details
+
+**Lifecycle**:
+- **CLI Module** starts the Next.js server on port 3303
+- Server manages its own lifecycle (auto-start/stop)
+- Server process is terminated when CLI exits
+
+**Interface with other modules**:
+- Invoked by **CLI Module** in default mode
+- Calls **Testing Module** to execute stories
+- Reads/writes files managed by all modules
+
+---
+
+### 4. Story Creator Module (`src/recorder/`)
+
+**Responsibility**: Open a controlled browser environment that records all user interactions and saves them as a user story.
+
+**Core Functionality**:
+- Launch Puppeteer in headed mode (visible browser)
+- Navigate to configured application URL
+- Inject event listeners to capture user interactions
+- Record actions in sequence:
+  - Mouse clicks (element, position, button)
+  - Keyboard input (text, keystrokes)
+  - Navigation (URL changes, back/forward)
+  - Form interactions (select, checkbox, radio)
+  - Scrolling
+- Capture DOM state after each action
+- Take screenshot after each action
+- Generate unique, stable CSS selectors for elements
+- Save complete user story to `.testing/stories/{generated-id}.json`
+- Save all screenshots to `.testing/screenshots/`
+
+**Recording Flow**:
+1. Read configuration from `.testing/config.json`
+2. Execute `appStartCommand` to start the tested application
+3. Launch headed Puppeteer browser
+4. Navigate to `appUrl` from config
+5. Inject recording script into page
+6. Capture all user events:
+   - Click events → `click` actions
+   - Input events → `input` actions
+   - Navigation → `navigate` actions
+   - Form changes → `select`, `check`, `uncheck` actions
+7. For each captured event:
+   - Generate stable CSS selector
+   - Record action with selector, type, and value
+   - Capture screenshot
+   - Store DOM state metadata
+8. When browser/tab closes:
+   - Generate unique story ID
+   - Save story JSON to `.testing/stories/{id}.json`
+   - Save all screenshots to `.testing/screenshots/{id}/`
+9. Execute `appStopCommand` to stop the tested application
+
+**Selector Generation**:
+The recorder MUST generate stable, reliable CSS selectors:
+- Priority 1: `id` attribute (if unique)
+- Priority 2: `data-testid` or similar test attributes
+- Priority 3: Combination of tag + classes + position
+- Priority 4: XPath as fallback
+
+**Important**:
+- Recording happens in **headed** mode (browser visible)
+- User performs actions naturally
+- After recording, the story can be edited in **Web UI Module**
+- Screenshots and actions can be customized post-recording
+
+**Interface with other modules**:
+- Invoked by **CLI Module** in `--new` mode
+- Creates files that **Testing Module** and **Web UI Module** read
+
+---
+
+## File Structure
+
+```
+.testing/                           # User-facing configuration and data
+├── config.json                     # Main configuration file
+├── stories/                        # User story JSON files
+│   ├── login-flow-001.json
+│   ├── checkout-flow-002.json
+│   └── ...
+└── screenshots/                    # Screenshots captured during tests/recording
+    ├── login-flow-001/
+    │   ├── step-0.png
+    │   ├── step-1.png
+    │   └── ...
+    └── ...
+
+cli/                                # CLI Module
+└── index.ts                        # Entry point, argument parsing, orchestration
+
+runner/                             # Testing Module
+├── test-runner.ts                  # Main test execution engine
+├── action-executor.ts              # Execute actions (click, input, etc.)
+├── assertion-validator.ts          # Validate assertions
+├── reporter.ts                     # Generate test reports
+└── lifecycle.ts                    # App/DB lifecycle management
+
+recorder/                           # Story Creator Module
+├── recorder.ts                     # Main recording orchestrator
+├── event-listener.ts               # Browser event capture
+├── selector-generator.ts           # Generate stable CSS selectors
+└── dom-capture.ts                  # Capture DOM state and screenshots
+
+webui/                              # Web UI Module (Next.js)
+├── app/                            # Next.js App Router
+│   ├── page.tsx                    # Dashboard
+│   ├── stories/                    # Story pages
+│   │   ├── page.tsx                # Stories list
+│   │   └── [id]/page.tsx           # Story detail/editor
+│   └── api/                        # API routes
+│       ├── stories/                # Story CRUD operations
+│       ├── config/                 # Config read/write
+│       └── run/                    # Trigger test execution
+├── components/                     # React components
+│   ├── story-list.tsx
+│   ├── step-editor.tsx
+│   ├── action-editor.tsx
+│   ├── assertion-editor.tsx
+│   └── ...
+└── lib/                            # Client-side utilities
+
+core/                               # Shared utilities
+├── constants.ts                    # Constants (ports, paths, defaults)
+├── config.ts                       # Config loading and validation
+└── storage.ts                      # File system operations
+
+types/                              # TypeScript type definitions
+└── index.ts                        # Shared types across modules
+```
+
+---
+
+## Configuration File Structure
+
+**Location**: `.testing/config.json`
+
+**Schema**:
+```json
+{
+  "appStartCommand": "npm run dev",
+  "appStopCommand": "npm run stop (optional)",
+  "appUrl": "http://localhost:3000",
+  "appPort": 3000,
+  "appReadyTimeout": 30000,
+
+  "database": {
+    "setupCommand": "npx prisma migrate deploy",
+    "teardownCommand": "npx prisma migrate reset --force",
+    "seedCommand": "npx prisma db seed",
+    "resetBetweenTests": true
+  },
+
+  "screenshotSettings": {
+    "quality": 90,
+    "format": "png",
+    "captureOnEveryStep": true,
+    "captureOnFailure": true,
+    "directory": ".testing/screenshots"
+  },
+
+  "puppeteer": {
+    "headless": true,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "timeout": 30000,
+    "slowMo": 0,
+    "devtools": false,
+    "args": []
+  },
+
+  "testSettings": {
+    "parallel": false,
+    "retries": 0,
+    "bail": false,
+    "timeout": 60000
+  },
+
+  "reporters": {
+    "console": true,
+    "json": false,
+    "html": false,
+    "outputDir": ".testing/reports"
+  }
+}
+```
+
+**Notes**:
+- The **Testing Module** uses this config to manage app/database lifecycle
+- The **Story Creator Module** uses this config to know where to navigate
+- The **Web UI Module** reads/writes this file through its API
+- This file MUST be loaded and validated before any module executes
+
+---
+
+## Module Communication
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                      CLI Module                         │
+│  (Entry point, orchestrates based on arguments)         │
+└────┬──────────────────┬─────────────────┬──────────────┘
+     │                  │                 │
+     │ Default Mode     │ --ci Mode       │ --new Mode
+     │                  │                 │
+┌────▼─────────┐  ┌────▼──────────┐  ┌──▼───────────────┐
+│  Web UI      │  │   Testing      │  │  Story Creator   │
+│  Module      │  │   Module       │  │  Module          │
+│              │  │                │  │                  │
+│ - Next.js UI │  │ - Load stories │  │ - Launch browser │
+│ - Port 3303  │  │ - Run tests    │  │ - Record events  │
+│ - Story mgmt │  │ - Generate     │  │ - Save story     │
+│ - Can invoke │  │   reports      │  │                  │
+│   Testing    │  │                │  │                  │
+│   Module     │  │                │  │                  │
+└──────────────┘  └────────────────┘  └──────────────────┘
+     │                  │                     │
+     └──────────────────┼─────────────────────┘
+                        │
+            ┌───────────▼────────────┐
+            │  Shared Storage Layer  │
+            │                        │
+            │  .testing/config.json  │
+            │  .testing/stories/     │
+            │  .testing/screenshots/ │
+            └────────────────────────┘
+```
+
+---
+
+## Implementation Guidelines
+
+### When Creating New Code
+
+1. **ASK FIRST**: Before implementing ANY new functionality, ask the user which technical approach/library/framework to use (except for pre-approved technologies listed above).
+
+2. **Module Independence**: Each module should be self-contained and not directly import from other modules (except shared types and utilities).
+
+3. **Error Handling**: All modules must handle errors gracefully and provide clear error messages.
+
+4. **Validation**: All JSON files (config, stories) must be validated before use. Ask the user which validation library to use.
+
+5. **Logging**: Implement consistent logging across all modules. Ask the user which logging approach/library to use.
+
+6. **Testing**: Each module should be testable in isolation. Ask the user which testing framework to use.
+
+### Constants to Use
+
+Create a `core/constants.ts` file with:
+```typescript
+export const WEBUI_PORT = 3303;
+export const TESTING_DIR = '.testing';
+export const CONFIG_FILE = '.testing/config.json';
+export const STORIES_DIR = '.testing/stories';
+export const SCREENSHOTS_DIR = '.testing/screenshots';
+export const STORY_VERSION = '1.0';
+```
+
+### File Naming Conventions
+
+- User stories: `{descriptive-name}.json` (e.g., `login-flow-001.json`)
+- Screenshots: `{story-id}/step-{index}.png`
+- Reports: `{timestamp}-report.json` or `{timestamp}-report.html`
+
+---
+
+## Development Workflow
+
+1. **Initialize Project**: User runs `$0 init` to create `.testing/` directory and default `config.json`
+2. **Record Stories**: User runs `$0 --new` to create user stories
+3. **Edit Stories**: User runs `$0` (Web UI) to edit/refine stories
+4. **Run Tests Locally**: User runs `$0` (Web UI) to execute tests and see results
+5. **Run Tests in CI**: User runs `$0 --ci` in CI pipeline
+
+---
+
+## Key Design Decisions
+
+1. **JSON Storage**: Simple, version-controllable, no database dependency
+2. **Port 3303**: Fixed port for Web UI to avoid conflicts
+3. **Separate Stories Directory**: Each story is a separate file for easy version control
+4. **Post-Recording Editing**: Recording creates raw data, Web UI allows refinement
+5. **Headless vs Headed**: Recording is headed, testing/CI is headless
+6. **Screenshot Auto-Capture**: Screenshots captured automatically but configurable
+7. **Lifecycle Management**: Library handles app/database lifecycle completely
+
+---
+
+## Important Reminders
+
+- ✅ **Next.js** is approved for Web UI Module
+- ✅ **Puppeteer** is approved for browser automation
+- ✅ **TypeScript** is approved for all code
+- ✅ **Port 3303** is fixed for Web UI
+- ❌ For EVERYTHING ELSE (validation libs, CLI parsers, UI components, state management, etc.), **ASK THE USER FIRST**
+- 🔄 All modules read/write to `.testing/` directory
+- 🔄 Config file `.testing/config.json` is the single source of truth for configuration
+- 🔄 The tested application's lifecycle (start/stop/database) is managed by the library based on config
+
+---
+
+## Questions to Ask Before Implementation
+
+Before implementing any part of the system, ask the user:
+
+1. **CLI Parsing**: Which library/approach for CLI argument parsing? (commander, yargs, native, etc.)
+2. **Validation**: Which library for validating JSON schemas? (zod, joi, ajv, etc.)
+3. **File System**: Use native fs or a library? (fs-extra, etc.)
+4. **Logging**: Which logging approach? (console, winston, pino, etc.)
+5. **Process Management**: How to spawn/manage app processes? (child_process, execa, etc.)
+6. **UI Components**: Which component library for Web UI? (shadcn, MUI, custom, etc.)
+7. **State Management**: How to manage state in Web UI? (React state, Zustand, Redux, etc.)
+8. **Styling**: How to style Web UI? (Tailwind, CSS Modules, styled-components, etc.)
+9. **Testing**: Which testing framework? (Jest, Vitest, etc.)
+10. **Build Tool**: Which build tool? (tsup, esbuild, webpack, etc.)
+
+---
+
+## Summary
+
+This testing library consists of 4 independent modules orchestrated by a CLI entry point:
+
+1. **CLI Module**: Routes to appropriate mode
+2. **Testing Module**: Executes user stories headlessly in CI
+3. **Web UI Module**: Manages stories and displays results (Next.js on port 3303)
+4. **Story Creator Module**: Records user interactions into story files
+
+All data is stored in `.testing/` directory with JSON files. The library manages the complete lifecycle of the tested application including database setup/teardown.
+
+**ALWAYS ask the user before making technical implementation decisions beyond the pre-approved technologies.**
