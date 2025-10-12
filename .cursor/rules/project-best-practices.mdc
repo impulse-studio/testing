@@ -1,0 +1,104 @@
+---
+alwaysApply: true
+---
+
+# Project Best Practices
+
+## File Naming Conventions
+
+### Kebab-Case for All Files
+Use kebab-casing for all filenames throughout the project:
+- ✅ `interactive-mode.ts`
+- ✅ `create-story.ts`
+- ✅ `yaml-helper.ts`
+- ❌ `interactiveMode.ts`
+- ❌ `createStory.ts`
+- ❌ `yamlHelper.ts`
+
+This ensures consistency and improves readability across the codebase.
+
+## File Organization
+
+### One Primary Function Per File
+Each file should contain one primary exported function to maintain clarity and ease of testing:
+- Improves maintainability by making files focused and purposeful
+- Makes it easier to locate and understand functionality
+- Simplifies testing and debugging
+- Reduces merge conflicts
+
+Helper functions specific to the primary function can remain in the same file, but consider extraction if they grow complex.
+
+### Callback and Handler Functions
+Group callback and handler functions in a dedicated `callbacks/` directory:
+- Create a `callbacks/` folder within the appropriate module
+- Each callback should have its own file
+- Name callback files after the function they contain (in kebab-case)
+- Example: `handle-create-new-story.ts`, `handle-existing-story.ts`
+
+**Benefits:**
+- Keeps main logic files clean and focused
+- Makes callbacks easy to find and modify
+- Improves testability of individual handlers
+
+### Utility Functions
+Organize utility functions in a `utils/` folder:
+- Place shared helper functions in `utils/`
+- Name utility files based on their purpose (kebab-case)
+- Keep utilities focused on a single responsibility
+- Examples: `slugify.ts`, `yaml-helper.ts`
+
+## Export and Import Patterns
+
+### Use Named Exports
+Always use named exports instead of default exports:
+```typescript
+// ✅ Good - Named export
+export async function createStoryOnboarding(): Promise<StoryConfig> {
+  // ...
+}
+
+// ❌ Avoid - Default export
+export default async function createStoryOnboarding(): Promise<StoryConfig> {
+  // ...
+}
+```
+
+**Advantages:**
+- Explicit naming prevents confusion
+- Better refactoring support in IDEs
+- Easier to identify what's being imported
+- Enables tree-shaking optimizations
+
+## Import Path Conventions
+
+### Extensionless Imports
+Always use extensionless imports for local TypeScript files:
+```typescript
+// ✅ Good - Extensionless import
+import { createStoryOnboarding } from './create-story';
+import { slugify } from './utils/slugify';
+
+// ❌ Avoid - Import with .js extension
+import { createStoryOnboarding } from './create-story.js';
+import { slugify } from './utils/slugify.js';
+```
+
+**Why:**
+- The project uses `"moduleResolution": "bundler"` in `tsconfig.json`
+- TypeScript compiler handles adding appropriate extensions at build time
+- Keeps imports clean and consistent
+- Allows flexibility in build configuration
+
+**Note:** External package imports (from `node_modules`) don't need extensions and work as usual.
+
+## Summary
+
+These practices establish consistency across the codebase and make collaboration easier:
+
+🔤 **Kebab-case filenames** - All files follow this convention
+📄 **One function per file** - Focused, maintainable modules
+📁 **Organized structure** - Callbacks and utils in dedicated folders
+📤 **Named exports** - Explicit and refactor-friendly
+📦 **Extensionless imports** - Clean imports without file extensions
+
+Following these patterns ensures code remains clean, maintainable, and easy to navigate as the project grows.

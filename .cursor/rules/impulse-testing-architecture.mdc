@@ -1,12 +1,94 @@
 ---
 alwaysApply: true
 ---
-### 2. Testing Module (`src/runner/`)
 
-**Responsibility**: Execute user stories from JSON files using Puppeteer in headless mode.
+# Impulse Testing - E2E Testing Library Architecture
+
+## Project Overview
+
+Impulse Testing is an E2E testing library that opens applications locally and uses Puppeteer for testing user stories. The library operates in three distinct modes controlled by CLI arguments.
+
+## Core Principles
+
+1. **Ask Before Implementing**: For ALL technical decisions (libraries, frameworks, implementation approaches), you MUST ask the user for approval before proceeding. The only exceptions are the technologies explicitly defined in this document.
+2. **Module Isolation**: Each module should be independent and communicate through well-defined interfaces.
+3. **YAML-Based Storage**: All configuration and user stories are stored as YAML files in `.testing/` directory.
+4. **Port 3303**: The Web UI always runs on port 3303 by default.
+
+## Approved Technologies
+
+The following technologies have been pre-approved:
+- **Next.js**: For the Web UI module (running on port 3303)
+- **Puppeteer**: For browser automation and recording
+- **TypeScript**: For all source code
+- **Node.js**: Runtime environment (>=18.0.0)
+
+For ANY other technical decisions (validation libraries, CLI parsers, UI components, testing frameworks, etc.), you MUST ask the user before proceeding.
+
+## Additional Approved Libraries
+
+After user approval, the following have been added:
+- **Commander**: CLI argument parsing and command handling
+- **Zod**: Schema validation for configuration and stories
+- **Execa**: Process management for starting/stopping tested apps
+- **Chalk**: Terminal output coloring
+- **@inquirer/prompts**: Interactive CLI prompts with arrow-key navigation
+- **yaml**: YAML file parsing and writing
+
+---
+
+## Module Architecture
+
+The library is composed of 4 main modules:
+
+### 1. CLI Module (`src/cli/`) - ✅ IMPLEMENTED
+
+**Status**: Completed and functional
+
+**Responsibility**: Entry point that orchestrates all other modules based on command-line arguments.
 
 **Core Functionality**:
-- Load user story JSON files from `.testing/stories/`
+- Parse command-line arguments
+- Provide interactive shell for story management
+- Route to appropriate mode (interactive, --ci, --new)
+- Initialize configuration from `.testing/config.yml`
+- Handle process lifecycle and graceful shutdown
+- Manage error handling and exit codes
+
+**CLI Arguments**:
+```bash
+$0              # Default mode: Interactive story selection
+$0 --ci         # CI mode: Run all stories headlessly
+$0 --new        # Recording mode: Create new user story
+```
+
+**Interactive Mode Features**:
+- Lists all available stories from `.testing/stories/`
+- Shows "Create new story" option at top
+- Arrow-key navigation and selection
+- Story creation onboarding (name, ID, start URL)
+- Creates story files with minimal structure
+- Integration points for recorder and runner modules
+
+**Dependencies Used**:
+- Commander for CLI framework
+- @inquirer/prompts for interactive UI
+- Chalk for colored output
+- YAML for file operations
+
+**Interface with other modules**:
+- Calls **Web UI Module** in default mode (TODO)
+- Calls **Testing Module** in `--ci` mode (TODO)
+- Calls **Story Creator Module** in `--new` mode (TODO)
+
+---
+
+### 2. Testing Module (`src/runner/`) - TODO
+
+**Responsibility**: Execute user stories from YAML files using Puppeteer in headless mode.
+
+**Core Functionality**:
+- Load user story YAML files from `.testing/stories/`
 - Execute lifecycle commands (start app, setup database)
 - Run Puppeteer in headless mode
 - Execute each step's actions sequentially
@@ -16,11 +98,11 @@ alwaysApply: true
 - Clean up resources (stop app, teardown database)
 
 **Execution Flow**:
-1. Read configuration from `.testing/config.json`
+1. Read configuration from `.testing/config.yml`
 2. Execute `appStartCommand` to start the tested application
 3. Execute database `setupCommand` (if configured)
 4. For each story file:
-   - Load story JSON
+   - Load story YAML
    - Launch headless Puppeteer browser
    - Execute each step's actions
    - Validate each step's assertions
@@ -33,44 +115,25 @@ alwaysApply: true
 
 **Data Structures**:
 
-**User Story File** (`.testing/stories/{story-id}.json`):
-```json
-{
-  "id": "string",
-  "name": "string",
-  "description": "string",
-  "tags": ["string"],
-  "created": "ISO 8601 timestamp",
-  "modified": "ISO 8601 timestamp",
-  "version": "1.0",
-  "steps": [
-    {
-      "index": 0,
-      "description": "string",
-      "actions": [
-        {
-          "type": "navigate|click|input|select|check|uncheck|wait|...",
-          "selector": "CSS selector (optional)",
-          "value": "string (optional)",
-          "options": {}
-        }
-      ],
-      "assertions": [
-        {
-          "type": "elementExists|textEquals|urlContains|...",
-          "selector": "CSS selector (optional)",
-          "expected": "any",
-          "options": {}
-        }
-      ],
-      "screenshot": {
-        "filename": "string",
-        "path": "relative path",
-        "timestamp": "ISO 8601"
-      }
-    }
-  ]
-}
+**User Story File** (`.testing/stories/{story-id}/story.yml`):
+```yaml
+id: story-id
+name: Story Name
+start:
+  url: http://localhost:3000
+  resolution:
+    width: 1920
+    height: 1080
+  pixelRatio: 1
+  deviceScaleFactor: 1
+actions:
+  - type: click
+    selector: "#button"
+  - type: input
+    selector: "#email"
+    value: "test@example.com"
+  - type: screenshot
+    id: 0
 ```
 
 **Action Types**:
@@ -94,7 +157,7 @@ alwaysApply: true
 
 ---
 
-### 3. Web UI Module (`src/webui/`)
+### 3. Web UI Module (`src/webui/`) - TODO
 
 **Responsibility**: Provide an interactive Next.js interface for managing user stories and viewing test results.
 
@@ -108,7 +171,7 @@ alwaysApply: true
 - Trigger test execution (single story or all stories)
 - Display real-time test execution progress
 - Show test results and failure details
-- Edit `.testing/config.json` through UI
+- Edit `.testing/config.yml` through UI
 
 **Technology**:
 - **Next.js App Router** (confirmed technology)
@@ -119,7 +182,7 @@ alwaysApply: true
 - Stories List: Table/grid of all user stories with tags, status, last run
 - Story Editor: Edit story metadata, steps, actions, assertions
 - Story Viewer: View story execution with screenshots and results
-- Configuration Editor: Edit `.testing/config.json` through UI
+- Configuration Editor: Edit `.testing/config.yml` through UI
 - Test Runner: Trigger tests and show real-time progress
 - Reports Viewer: View test reports and failure details
 
@@ -135,7 +198,7 @@ alwaysApply: true
 
 ---
 
-### 4. Story Creator Module (`src/recorder/`)
+### 4. Story Creator Module (`src/recorder/`) - TODO
 
 **Responsibility**: Open a controlled browser environment that records all user interactions and saves them as a user story.
 
@@ -152,11 +215,11 @@ alwaysApply: true
 - Capture DOM state after each action
 - Take screenshot after each action
 - Generate unique, stable CSS selectors for elements
-- Save complete user story to `.testing/stories/{generated-id}.json`
+- Save complete user story to `.testing/stories/{generated-id}/story.yml`
 - Save all screenshots to `.testing/screenshots/`
 
 **Recording Flow**:
-1. Read configuration from `.testing/config.json`
+1. Read configuration from `.testing/config.yml`
 2. Execute `appStartCommand` to start the tested application
 3. Launch headed Puppeteer browser
 4. Navigate to `appUrl` from config
@@ -173,7 +236,7 @@ alwaysApply: true
    - Store DOM state metadata
 8. When browser/tab closes:
    - Generate unique story ID
-   - Save story JSON to `.testing/stories/{id}.json`
+   - Save story YAML to `.testing/stories/{id}/story.yml`
    - Save all screenshots to `.testing/screenshots/{id}/`
 9. Execute `appStopCommand` to stop the tested application
 
@@ -200,35 +263,43 @@ The recorder MUST generate stable, reliable CSS selectors:
 
 ```
 .testing/                           # User-facing configuration and data
-├── config.json                     # Main configuration file
-├── stories/                        # User story JSON files
-│   ├── login-flow-001.json
-│   ├── checkout-flow-002.json
+├── config.yml                      # Main configuration file
+├── stories/                        # User story directories
+│   ├── login-flow-001/
+│   │   └── story.yml
+│   ├── checkout-flow-002/
+│   │   └── story.yml
 │   └── ...
 └── screenshots/                    # Screenshots captured during tests/recording
     ├── login-flow-001/
-    │   ├── step-0.png
-    │   ├── step-1.png
+    │   ├── 0.png
+    │   ├── 1.png
     │   └── ...
     └── ...
 
-cli/                                # CLI Module
-└── index.ts                        # Entry point, argument parsing, orchestration
+src/cli/                            # CLI Module (IMPLEMENTED)
+├── index.ts                        # Main entry point
+├── interactive-mode.ts             # Interactive shell handler
+├── list-stories.ts                 # Story listing logic
+├── create-story.ts                 # Story creation workflow
+└── utils/
+    ├── slugify.ts                  # Slugification utility
+    └── yaml-helper.ts              # YAML read/write helpers
 
-runner/                             # Testing Module
+src/runner/                         # Testing Module (TODO)
 ├── test-runner.ts                  # Main test execution engine
 ├── action-executor.ts              # Execute actions (click, input, etc.)
 ├── assertion-validator.ts          # Validate assertions
 ├── reporter.ts                     # Generate test reports
 └── lifecycle.ts                    # App/DB lifecycle management
 
-recorder/                           # Story Creator Module
+src/recorder/                       # Story Creator Module (TODO)
 ├── recorder.ts                     # Main recording orchestrator
 ├── event-listener.ts               # Browser event capture
 ├── selector-generator.ts           # Generate stable CSS selectors
 └── dom-capture.ts                  # Capture DOM state and screenshots
 
-webui/                              # Web UI Module (Next.js)
+src/webui/                          # Web UI Module (TODO)
 ├── app/                            # Next.js App Router
 │   ├── page.tsx                    # Dashboard
 │   ├── stories/                    # Story pages
@@ -239,19 +310,15 @@ webui/                              # Web UI Module (Next.js)
 │       ├── config/                 # Config read/write
 │       └── run/                    # Trigger test execution
 ├── components/                     # React components
-│   ├── story-list.tsx
-│   ├── step-editor.tsx
-│   ├── action-editor.tsx
-│   ├── assertion-editor.tsx
 │   └── ...
 └── lib/                            # Client-side utilities
 
-core/                               # Shared utilities
+src/core/                           # Shared utilities (TODO)
 ├── constants.ts                    # Constants (ports, paths, defaults)
 ├── config.ts                       # Config loading and validation
 └── storage.ts                      # File system operations
 
-types/                              # TypeScript type definitions
+src/types/                          # TypeScript type definitions (TODO)
 └── index.ts                        # Shared types across modules
 ```
 
@@ -259,58 +326,50 @@ types/                              # TypeScript type definitions
 
 ## Configuration File Structure
 
-**Location**: `.testing/config.json`
+**Location**: `.testing/config.yml`
 
 **Schema**:
-```json
-{
-  "appStartCommand": "npm run dev",
-  "appStopCommand": "npm run stop (optional)",
-  "appUrl": "http://localhost:3000",
-  "appPort": 3000,
-  "appReadyTimeout": 30000,
+```yaml
+appStartCommand: npm run dev
+appStopCommand: npm run stop
+appUrl: http://localhost:3000
+appPort: 3000
+appReadyTimeout: 30000
 
-  "database": {
-    "setupCommand": "npx prisma migrate deploy",
-    "teardownCommand": "npx prisma migrate reset --force",
-    "seedCommand": "npx prisma db seed",
-    "resetBetweenTests": true
-  },
+database:
+  setupCommand: npx prisma migrate deploy
+  teardownCommand: npx prisma migrate reset --force
+  seedCommand: npx prisma db seed
+  resetBetweenTests: true
 
-  "screenshotSettings": {
-    "quality": 90,
-    "format": "png",
-    "captureOnEveryStep": true,
-    "captureOnFailure": true,
-    "directory": ".testing/screenshots"
-  },
+screenshotSettings:
+  quality: 90
+  format: png
+  captureOnEveryStep: true
+  captureOnFailure: true
+  directory: .testing/screenshots
 
-  "puppeteer": {
-    "headless": true,
-    "viewport": {
-      "width": 1920,
-      "height": 1080
-    },
-    "timeout": 30000,
-    "slowMo": 0,
-    "devtools": false,
-    "args": []
-  },
+puppeteer:
+  headless: true
+  viewport:
+    width: 1920
+    height: 1080
+  timeout: 30000
+  slowMo: 0
+  devtools: false
+  args: []
 
-  "testSettings": {
-    "parallel": false,
-    "retries": 0,
-    "bail": false,
-    "timeout": 60000
-  },
+testSettings:
+  parallel: false
+  retries: 0
+  bail: false
+  timeout: 60000
 
-  "reporters": {
-    "console": true,
-    "json": false,
-    "html": false,
-    "outputDir": ".testing/reports"
-  }
-}
+reporters:
+  console: true
+  json: false
+  html: false
+  outputDir: .testing/reports
 ```
 
 **Notes**:
@@ -374,20 +433,21 @@ types/                              # TypeScript type definitions
 
 ### Constants to Use
 
-Create a `core/constants.ts` file with:
+Create a `src/core/constants.ts` file with:
 ```typescript
 export const WEBUI_PORT = 3303;
 export const TESTING_DIR = '.testing';
-export const CONFIG_FILE = '.testing/config.json';
+export const CONFIG_FILE = '.testing/config.yml';
 export const STORIES_DIR = '.testing/stories';
 export const SCREENSHOTS_DIR = '.testing/screenshots';
-export const STORY_VERSION = '1.0';
+export const STORY_FILE = 'story.yml';
 ```
 
 ### File Naming Conventions
 
-- User stories: `{descriptive-name}.json` (e.g., `login-flow-001.json`)
-- Screenshots: `{story-id}/step-{index}.png`
+- Story directories: `{story-id}/` (e.g., `login-flow-001/`)
+- Story files: `story.yml` inside each story directory
+- Screenshots: `{screenshot-id}.png` (e.g., `0.png`, `1.png`)
 - Reports: `{timestamp}-report.json` or `{timestamp}-report.html`
 
 ---
@@ -404,7 +464,7 @@ export const STORY_VERSION = '1.0';
 
 ## Key Design Decisions
 
-1. **JSON Storage**: Simple, version-controllable, no database dependency
+1. **YAML Storage**: Human-readable, version-controllable, no database dependency
 2. **Port 3303**: Fixed port for Web UI to avoid conflicts
 3. **Separate Stories Directory**: Each story is a separate file for easy version control
 4. **Post-Recording Editing**: Recording creates raw data, Web UI allows refinement
@@ -453,6 +513,6 @@ This testing library consists of 4 independent modules orchestrated by a CLI ent
 3. **Web UI Module**: Manages stories and displays results (Next.js on port 3303)
 4. **Story Creator Module**: Records user interactions into story files
 
-All data is stored in `.testing/` directory with JSON files. The library manages the complete lifecycle of the tested application including database setup/teardown.
+All data is stored in `.testing/` directory with YAML files. The library manages the complete lifecycle of the tested application including database setup/teardown.
 
 **ALWAYS ask the user before making technical implementation decisions beyond the pre-approved technologies.**

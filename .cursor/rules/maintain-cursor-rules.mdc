@@ -1,0 +1,131 @@
+---
+alwaysApply: true
+---
+
+# Maintain Cursor Rules
+
+## Critical Requirement
+
+**Cursor rules MUST ALWAYS be kept in sync with the project.** This is a mandatory practice, not optional.
+
+## When to Update Cursor Rules
+
+Update cursor rules immediately when:
+
+1. **Implementing New Features**: After completing any module, component, or significant feature
+2. **Adding Dependencies**: When installing new libraries or frameworks
+3. **Changing Architecture**: When modifying how modules communicate or are structured
+4. **Establishing Patterns**: When creating reusable patterns or conventions
+5. **Making Technical Decisions**: When choosing libraries, tools, or approaches
+
+## What to Document in Cursor Rules
+
+### Implementation Rules
+
+Create or update rules for:
+- New modules and their responsibilities
+- Dependencies added and their purpose
+- Code patterns and conventions established
+- Integration points between modules
+- Technical decisions and reasoning
+
+### Rule Format
+
+**Location**: Always create rules in `.cursor/rules/` directory
+
+**Naming**: Use kebab-case for rule filenames (e.g., `cli-implementation.mdc`, `runner-module.mdc`)
+
+**Structure**:
+- Use frontmatter for metadata (`alwaysApply: true` for critical rules)
+- Keep content generic and informative
+- Avoid specific file paths that may change
+- Focus on concepts, patterns, and decisions
+- Describe what, why, and how - not where
+
+**Content Guidelines**:
+- ✅ **Generic descriptions**: "The CLI module handles user interaction"
+- ✅ **Dependency purposes**: "Uses @inquirer/prompts for interactive CLI"
+- ✅ **Patterns**: "Story creation follows onboarding workflow"
+- ✅ **Principles**: "Use kebab-casing for filenames"
+- ❌ **Specific paths**: "File located at src/cli/index.ts"
+- ❌ **Implementation details**: "Function on line 42 does X"
+- ❌ **Temporary notes**: "TODO: fix this later"
+
+## Rule Categories
+
+### Always Applied Rules
+Mark with `alwaysApply: true` in frontmatter for:
+- Project-wide conventions
+- Critical architectural decisions
+- Code principles that apply everywhere
+- Meta-rules (like this one)
+
+### Feature-Specific Rules
+Standard rules (no frontmatter flag) for:
+- Module implementations
+- Feature documentation
+- Integration patterns
+- Technical choices for specific areas
+
+## Documentation Style
+
+### Keep It Maintainable
+
+- Write rules that stay relevant as code evolves
+- Describe concepts, not specific implementations
+- Focus on decisions and reasoning
+- Avoid referencing exact file structures
+- Keep it concise but complete
+
+### Make It Useful
+
+Rules should help AI understand:
+- What has been implemented
+- Why decisions were made
+- How components work together
+- What patterns to follow
+- What dependencies solve which problems
+
+### Examples
+
+**Good Rule Content**:
+```
+The CLI uses an interactive prompt library for arrow-key navigation
+and user input collection. Story creation follows a sequential onboarding
+pattern with validation at each step.
+```
+
+**Bad Rule Content**:
+```
+The file at src/cli/interactive-mode.ts on line 15 calls the select()
+function to show options. Update this file if you need to add more options.
+```
+
+## Workflow
+
+After completing any implementation:
+
+1. **Immediately create or update a cursor rule**
+2. **Document the feature generically**
+3. **List dependencies and their purposes**
+4. **Describe patterns established**
+5. **Note integration points**
+6. **Keep existing rules in sync**
+
+## Why This Matters
+
+Cursor rules serve as the project's memory. They:
+- Keep AI context aligned with current state
+- Document decisions for future work
+- Establish patterns for consistency
+- Prevent reimplementing existing solutions
+- Enable better collaboration between AI sessions
+
+**Treating cursor rules as optional leads to context drift and inconsistency.**
+
+## Summary
+
+🎯 **Always update cursor rules after implementing features**
+📝 **Write generic, maintainable documentation**
+🔄 **Keep rules in sync with project evolution**
+✅ **Use `.cursor/rules/` directory exclusively**

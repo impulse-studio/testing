@@ -1,0 +1,115 @@
+---
+description: CLI Module Implementation Details
+---
+
+# CLI Module Implementation
+
+## Overview
+
+The CLI module serves as the entry point for the application. It provides an interactive shell interface for managing test stories.
+
+## Dependencies
+
+### Interactive Prompts
+- **@inquirer/prompts** - Provides interactive CLI experiences with arrow key navigation, selection lists, and input prompts. Same library used by create-next-app and create-vite.
+
+### File Format
+- **yaml** - For reading and writing story configuration files in YAML format.
+
+### Already Available
+- **commander** - CLI framework for parsing arguments and managing commands
+- **chalk** - Terminal string styling and colors
+
+## Features Implemented
+
+### Interactive Mode (Default Behavior)
+
+When the CLI is invoked without arguments, it launches an interactive shell that:
+
+1. **Story Listing**: Scans the stories directory and displays all available stories
+2. **Empty State**: Shows informative message when no stories exist
+3. **Create Option**: Always displays "Create new story" option at the top of the list
+4. **Navigation**: Uses arrow keys for selection, Enter to confirm
+5. **Visual Design**: Uses colors and icons for better UX
+
+### Story Creation Workflow
+
+The creation flow follows a sequential onboarding pattern:
+
+1. **Name Prompt**: Asks for story name (required, validated)
+2. **ID Suggestion**: Auto-generates slug from name, allows editing
+3. **URL Input**: Asks for start URL with format validation (default: http://localhost:3000)
+4. **File Creation**: Creates story file with minimal required structure
+5. **Next Action**: Indicates recorder will open (placeholder for future integration)
+
+### Story File Structure
+
+Created story files contain minimal configuration:
+- Story ID and name
+- Start URL
+- Empty actions array (populated during recording)
+
+### Utilities
+
+**Slugification**: Converts text to URL-friendly slugs by:
+- Converting to lowercase
+- Removing special characters
+- Replacing spaces/underscores with hyphens
+- Trimming leading/trailing hyphens
+
+**YAML Helpers**: Type-safe read/write functions for YAML files with async/await patterns.
+
+## Code Principles
+
+### Naming and Structure
+- Use kebab-casing for all filenames
+- Function names should be explicit and self-documenting
+- Variable names should clearly indicate their purpose
+- Avoid unnecessary comments - code should be readable
+
+### Modularity
+- Each file handles a single responsibility
+- Utilities are separated into their own directory
+- Logic is split across multiple files for easy maintenance
+
+### Simplicity
+- Implement only what's needed now
+- Don't over-engineer for future requirements
+- Keep complexity minimal
+- Refactoring happens when new features are added
+
+## Integration Points
+
+### Recorder Module (TODO)
+When story creation completes, the recorder module should:
+- Receive the story file path
+- Open a controlled browser
+- Capture user interactions
+- Write actions to the story file
+
+### Runner Module (TODO)
+When selecting an existing story, the runner module should:
+- Receive the story ID
+- Execute the story's actions
+- Display results
+
+## Error Handling
+
+- Gracefully handles missing directories
+- Validates user inputs before proceeding
+- Shows clear error messages with colors
+- Fails silently when scanning for non-existent stories
+
+## User Experience
+
+### Visual Feedback
+- Branded header with emoji
+- Color-coded messages (info in yellow, success in green, error in red)
+- Dimmed secondary information (story IDs)
+- Clear action indicators (emojis for different states)
+
+### Interaction Patterns
+- Arrow keys for navigation
+- Enter to select
+- Input validation with error messages
+- Default values for common inputs
