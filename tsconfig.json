@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
     // Module Resolution
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "target": "esnext",
     "lib": ["esnext"],
 
