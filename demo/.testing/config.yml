@@ -1,0 +1,16 @@
+lifecycle:
+  start:
+    - command: "echo 'Start database here'"
+      timeout: 30000
+    - command: "pnpm test:webui"
+      keepAlive: true
+  stop:
+    - command: "echo 'Stop database here'"
+      timeout: 10000
+
+screenshots:
+  diffThreshold: 20 # number of pixels to ignore when comparing screenshots
+
+output:
+  console: true
+  text: true

@@ -1,0 +1,28 @@
+id: happy-cat
+name: Happy cat testing
+
+start:
+  resolution:
+    width: 800
+    height: 600
+  pixelRatio: 1
+  deviceScaleFactor: 1
+  url: "http://localhost:5173"
+
+actions:
+  - type: click
+    selector: "#happy-cat"
+  - type: screenshot
+    id: 0
+  - type: click
+    selector: "#happy-cat"
+  - type: screenshot
+    id: 1
+  - type: click
+    selector: "#happy-cat"
+  - type: screenshot
+    id: 2
+  - type: click
+    selector: "#happy-cat"
+  - type: screenshot
+    id: 3
