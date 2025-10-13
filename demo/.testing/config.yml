@@ -2,7 +2,7 @@ lifecycle:
   start:
     - command: "echo 'Start database here'"
       timeout: 30000
-    - command: "pnpm test:webui"
+    - command: "pnpm dev"
       keepAlive: true
   stop:
     - command: "echo 'Stop database here'"
