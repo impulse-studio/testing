@@ -34,6 +34,7 @@ After user approval, the following have been added:
 - **Chalk**: Terminal output coloring
 - **@inquirer/prompts**: Interactive CLI prompts with arrow-key navigation
 - **yaml**: YAML file parsing and writing
+- **css-selector-generator**: Stable CSS selector generation for element identification
 
 ---
 
@@ -79,7 +80,7 @@ $0 --new        # Recording mode: Create new user story
 **Interface with other modules**:
 - Calls **Web UI Module** in default mode (TODO)
 - Calls **Testing Module** in `--ci` mode (TODO)
-- Calls **Story Creator Module** in `--new` mode (TODO)
+- Calls **Story Creator Module** in `--new` mode (✅ IMPLEMENTED)
 
 ---
 
@@ -198,7 +199,9 @@ actions:
 
 ---
 
-### 4. Story Creator Module (`src/recorder/`) - TODO
+### 4. Story Creator Module (`src/recorder/`) - ✅ IMPLEMENTED
+
+**Status**: Completed and functional
 
 **Responsibility**: Open a controlled browser environment that records all user interactions and saves them as a user story.
 
@@ -293,7 +296,7 @@ src/runner/                         # Testing Module (TODO)
 ├── reporter.ts                     # Generate test reports
 └── lifecycle.ts                    # App/DB lifecycle management
 
-src/recorder/                       # Story Creator Module (TODO)
+src/recorder/                       # Story Creator Module (IMPLEMENTED)
 ├── recorder.ts                     # Main recording orchestrator
 ├── event-listener.ts               # Browser event capture
 ├── selector-generator.ts           # Generate stable CSS selectors

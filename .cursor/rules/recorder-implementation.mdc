@@ -1,0 +1,365 @@
+---
+description: Recorder Module Implementation Details
+---
+
+# Recorder Module Implementation
+
+## Overview
+
+The recorder module is responsible for capturing user interactions in a headed browser and saving them as test stories. It integrates with the CLI to provide an interactive recording experience.
+
+## Module Status
+
+✅ **FULLY IMPLEMENTED**
+
+## Architecture
+
+The recorder module consists of several components working together to capture, process, and save user interactions:
+
+### Core Infrastructure (src/core/)
+
+Shared utilities used by recorder, runner, and webui modules:
+
+- **constants.ts**: Project-wide constants (ports, paths, file names)
+- **types.ts**: TypeScript type definitions for Config, Story, Actions
+- **config-loader.ts**: Loads and validates config.yml using Zod schemas
+- **lifecycle-manager.ts**: Manages app start/stop using Execa process management
+
+### Recorder Components (src/recorder/)
+
+- **index.ts**: Main orchestrator that coordinates all components
+- **browser-manager.ts**: Launches Puppeteer in headed mode with story configuration
+- **event-capture.ts**: Captures DOM events and converts to Action objects
+- **selector-generator.ts**: Generates stable CSS selectors (id → data-testid → complex)
+- **screenshot-manager.ts**: Captures and saves screenshots to .testing/screenshots
+- **story-updater.ts**: Reads and appends actions to story.yml files
+- **recording-ui.ts**: Injects floating UI with Stop/Snapshot buttons into the page
+
+## Key Features
+
+### 1. Selector Generation Priority
+
+The selector-generator uses a three-tier priority system:
+
+1. **ID attribute** - If unique, uses `#id`
+2. **data-testid** - Uses `[data-testid="value"]`
+3. **data-test** - Uses `[data-test="value"]`
+4. **Complex selector** - Generated using css-selector-generator library
+
+Each selector is validated for uniqueness before being used.
+
+### 2. Event Capture
+
+Captures the following DOM events and converts them to actions:
+
+- **Clicks** → ClickAction
+- **Text input** → InputAction (tracked and grouped until snapshot)
+- **Select changes** → SelectAction
+- **Checkbox** → CheckAction/UncheckAction
+- **Radio buttons** → CheckAction/UncheckAction
+- **Navigation** → NavigateAction (detected automatically via framenavigated)
+
+### 3. Input Grouping Strategy
+
+Input events use a special tracking system:
+
+- Input events are stored in a Map (selector → value)
+- Only the final value for each input is retained
+- Inputs are flushed to actions when:
+  - User clicks "Take Snapshot" button
+  - Recording stops
+  - Browser closes
+
+This ensures inputs are split at snapshot boundaries as required by the architecture.
+
+### 4. Screenshot Management
+
+Screenshots are captured using Puppeteer's screenshot API:
+
+- Screenshots are only taken when user clicks "Take Snapshot" button
+- Saved to `.testing/screenshots/{storyId}/{id}.png`
+- Screenshot IDs auto-increment starting from 0
+- Each snapshot creates a screenshot action in story.yml
+- Viewport-only (not full page) screenshots
+
+### 5. Recording UI
+
+A floating draggable panel is injected into the page with:
+
+- **Take Snapshot** button (blue) - captures current state and screenshot
+- **Stop Recording** button (red) - ends recording and saves
+- **Drag handle** - allows repositioning the panel
+- Positioned at top-right corner by default
+- Styled with modern CSS (shadows, hover effects, rounded corners)
+- High z-index (999999) to stay on top of all page content
+- Filters its own events to avoid recording interactions with itself
+
+### 6. Auto-Save on Exit
+
+Recording automatically saves pending actions when:
+
+- User closes the browser window (via 'disconnected' event)
+- User clicks "Stop Recording" button
+- Browser crashes or connection is lost
+
+This ensures no user interactions are lost.
+
+### 7. Event Injection Strategy
+
+Uses a dual-injection approach for persistence:
+
+- `page.evaluateOnNewDocument()` - Ensures listeners are injected on all future navigations
+- `injectListeners()` - Manually injects listeners on current page after initial load
+- Event listeners persist across navigation automatically
+- Filters out impulse UI elements using `isImpulseUI()` helper
+
+## Integration Points
+
+### CLI Integration
+
+The recorder is invoked by the CLI's create-new-story callback:
+
+1. User runs interactive mode
+2. Selects "Create new story"
+3. Provides story name, ID, and start URL
+4. CLI creates story.yml with metadata and empty actions array
+5. CLI invokes `startRecording(storyId)`
+6. Recorder launches and user performs actions
+7. Actions are appended to the created story.yml
+
+### Configuration Requirements
+
+Requires `.testing/config.yml` to exist with:
+
+```yaml
+lifecycle:
+  start:
+    - command: npm run dev
+      keepAlive: true
+      timeout: 30000
+  stop:
+    - command: pkill -f "npm run dev"
+```
+
+The recorder:
+
+1. Loads config using config-loader
+2. Starts app using lifecycle-manager
+3. Records user actions
+4. Stops app on completion
+
+## Dependencies Used
+
+### Approved Libraries
+
+- **Puppeteer**: Browser automation (headed mode for recording)
+- **Execa**: Process management for app lifecycle
+- **Zod**: Config validation and type safety
+- **YAML**: Story file reading/writing
+- **Chalk**: Terminal output coloring
+
+### New Dependencies
+
+- **css-selector-generator**: Generates complex CSS selectors as fallback
+
+## File Structure
+
+```
+src/core/                      # Shared utilities
+├── constants.ts               # Project constants
+├── types.ts                   # TypeScript types
+├── config-loader.ts           # Config loading with Zod
+└── lifecycle-manager.ts       # App lifecycle with Execa
+
+src/recorder/                  # Recorder module
+├── index.ts                   # Main orchestrator
+├── browser-manager.ts         # Puppeteer browser launch
+├── event-capture.ts           # Event tracking system
+├── selector-generator.ts      # Selector generation
+├── screenshot-manager.ts      # Screenshot capture
+├── recording-ui.ts            # Injected UI
+└── story-updater.ts           # Story file updates
+
+src/cli/callbacks/create-new-story/
+├── handler.ts                 # Invokes recorder.startRecording()
+└── create-story.ts            # Story onboarding flow
+```
+
+## Technical Details
+
+### Browser Configuration
+
+Launched with the following settings:
+
+- `headless: false` - Visible browser for user interaction
+- `defaultViewport` from story.start.resolution (default 1920x1080)
+- `deviceScaleFactor` from story config
+- `pixelRatio` applied via setViewport if needed
+- `waitUntil: 'networkidle2'` for initial navigation
+
+### Event Communication
+
+Uses Puppeteer's `exposeFunction` API to communicate events:
+
+- `page.exposeFunction('__impulse_captureEvent', handler)` - Receives DOM events
+- `page.exposeFunction('__impulse_onStop', callback)` - Stop button handler
+- `page.exposeFunction('__impulse_onSnapshot', callback)` - Snapshot button handler
+- Events are sent from page context to Node.js via these exposed functions
+
+### Story File Updates
+
+Actions are appended to existing story.yml:
+
+1. Load current story using `loadStory(storyId)`
+2. Append new actions to actions array: `story.actions = [...story.actions, ...actions]`
+3. Write back using `writeYamlFile()` preserving all metadata (id, name, start)
+
+### Selector Generation in Browser Context
+
+The selector generation logic is duplicated in two places:
+
+1. **selector-generator.ts** - Node.js version (currently unused)
+2. **event-capture.ts** - Injected into page context for runtime generation
+
+The browser version generates selectors inline to avoid serialization issues.
+
+## Error Handling
+
+The recorder implements comprehensive error handling:
+
+- Validates config.yml exists before starting
+- Cleans up resources (browser, app) on errors
+- Auto-saves actions before exit even on errors
+- Clear error messages with colored output (chalk)
+- Graceful degradation for selector generation failures
+- Process cleanup in try-catch blocks
+
+## Recording Flow
+
+### Initialization Phase
+
+1. Load config from config.yml
+2. Load story metadata from story.yml
+3. Start app using lifecycle manager
+4. Launch headed browser with story configuration
+5. Create EventCapture instance
+6. Start capturing events
+7. Inject recording UI with callbacks
+8. Display success message
+
+### Recording Phase
+
+User interacts naturally with the application while:
+
+- Click events → Added to pendingActions immediately
+- Input events → Tracked in inputTracking Map
+- Select/checkbox/radio changes → Added to pendingActions immediately
+- Navigation → Detected automatically and added to pendingActions
+
+### Snapshot Phase
+
+When user clicks "Take Snapshot":
+
+1. Flush all tracked inputs to actions
+2. Add screenshot action with current ID
+3. Take actual screenshot and save to disk
+4. Append all pending actions to story.yml
+5. Clear pendingActions array
+6. Increment screenshot counter
+7. Display success message
+
+### Termination Phase
+
+When user clicks "Stop Recording" or closes browser:
+
+1. Get any remaining pending actions
+2. Flush input tracking
+3. Append pending actions to story.yml if any exist
+4. Remove recording UI from page
+5. Close browser
+6. Stop app using lifecycle manager
+7. Display completion message
+
+## Usage
+
+### From CLI
+
+```bash
+$0              # Interactive mode
+> Create new story
+> Enter name: "User Login Flow"
+> Enter ID: user-login-flow
+> Enter URL: http://localhost:3000
+> Browser opens, record actions
+> Click "Take Snapshot" after each logical step
+> Click "Stop Recording" when done
+```
+
+### Programmatic Usage
+
+```typescript
+import { startRecording } from './recorder';
+
+await startRecording('my-story-id');
+```
+
+## Code Principles
+
+### Naming and Structure
+
+- Use kebab-casing for all filenames
+- Function names should be explicit and self-documenting
+- Variable names should clearly indicate their purpose
+- Avoid unnecessary comments - code should be readable
+
+### Modularity
+
+- Each file handles a single responsibility
+- Components are loosely coupled
+- Communication happens through well-defined interfaces
+- Shared utilities extracted to src/core/
+
+### Simplicity
+
+- Implement only what's needed now
+- Don't over-engineer for future requirements
+- Keep complexity minimal
+- Refactoring happens when new features are added
+
+## Future Enhancements
+
+The following are NOT yet implemented:
+
+- Smart wait detection (runner module feature)
+- Screenshot comparison (runner module feature)
+- Edit mode for existing stories (webui module feature)
+- Assertion generation (may be added to recorder or webui)
+- Advanced selector strategies (XPath, custom attributes)
+- Screenshot diffing during recording
+- Undo/redo functionality
+- Pause/resume recording
+- Action editing during recording
+
+## Known Limitations
+
+1. **Selector generation** runs in browser context, so the selector-generator.ts file is not used
+2. **Input grouping** doesn't split inputs mid-typing (only at snapshots)
+3. **Navigation events** are detected but don't trigger automatic snapshots
+4. **Iframes** are not currently supported
+5. **Shadow DOM** elements may not be captured correctly
+6. **File uploads** are captured as click events, not upload actions
+
+## Summary
+
+The recorder module provides a complete user interaction recording system that:
+
+- Opens visible browser for natural user interaction
+- Captures clicks, inputs, form changes, navigation
+- Groups actions by snapshot boundaries
+- Generates stable, unique selectors
+- Saves to YAML format with clean structure
+- Integrates seamlessly with CLI workflow
+- Handles errors gracefully with proper cleanup
+- Auto-saves on unexpected exits
+
+The implementation is production-ready and follows all architectural guidelines defined in the impulse-testing-architecture document.
