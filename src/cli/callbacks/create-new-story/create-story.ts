@@ -1,8 +1,8 @@
 import { input } from '@inquirer/prompts';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { slugify } from '../../utils/slugify.js';
-import { writeYamlFile } from '../../utils/yaml-helper.js';
+import { slugify } from '@/cli/utils/slugify';
+import { writeYamlFile } from '@/cli/utils/yaml-helper';
 
 interface StoryConfig {
   id: string;

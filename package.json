@@ -10,7 +10,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "dev": "cd demo && tsx ../src/cli/index.ts && cd ..",
+    "dev": "cd demo && tsx --tsconfig=../tsconfig.json ../src/cli/index.ts && cd ..",
     "start": "node dist/cli/index.js",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist .next"

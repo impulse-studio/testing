@@ -23,7 +23,9 @@ Shared utilities used by recorder, runner, and webui modules:
 - **constants.ts**: Project-wide constants (ports, paths, file names)
 - **types.ts**: TypeScript type definitions for Config, Story, Actions
 - **config-loader.ts**: Loads and validates config.yml using Zod schemas
-- **lifecycle-manager.ts**: Manages app start/stop using Execa process management
+- **start-app.ts**: Starts the application using lifecycle commands
+- **stop-app.ts**: Stops the application and executes cleanup commands
+- **utils/execute-command.ts**: Executes individual lifecycle commands using Execa
 
 ### Recorder Components (src/recorder/)
 
@@ -81,20 +83,56 @@ Screenshots are captured using Puppeteer's screenshot API:
 - Screenshot IDs auto-increment starting from 0
 - Each snapshot creates a screenshot action in story.yml
 - Viewport-only (not full page) screenshots
+- **Recording UI is automatically hidden** during screenshot capture and restored immediately after to ensure clean screenshots
 
 ### 5. Recording UI
 
 A floating draggable panel is injected into the page with:
 
+- **Container ID**: `__impulse-testing__ui` - Used for event filtering and UI management
 - **Take Snapshot** button (blue) - captures current state and screenshot
 - **Stop Recording** button (red) - ends recording and saves
 - **Drag handle** - allows repositioning the panel
-- Positioned at top-right corner by default
-- Styled with modern CSS (shadows, hover effects, rounded corners)
-- High z-index (999999) to stay on top of all page content
-- Filters its own events to avoid recording interactions with itself
+- Positioned at bottom center by default
+- Styled with modern CSS (glassmorphism, shadows, hover effects, rounded corners)
+- High z-index to stay on top of page content
+- **Event filtering**: All interactions with the UI container (`#__impulse-testing__ui`) are automatically filtered out and not recorded as test actions
 
-### 6. Auto-Save on Exit
+### 6. Browser-Side Injected Code Structure
+
+For better IDE support and maintainability, all browser-side JavaScript code is stored in separate files:
+
+**Location**: `src/recorder/injected/`
+
+- **event-capture-client.js** - Pure browser JavaScript for event capture
+  - Contains inline selector generation logic
+  - Attaches click, input, and change event listeners
+  - Filters out impulse UI elements using `isImpulseUI()` helper that checks for `#__impulse-testing__ui`
+  - Communicates events via window.__impulse_captureEvent()
+
+- **recording-ui-client.js** - Pure browser JavaScript for recording UI
+  - Creates the floating recording panel HTML
+  - Injects CSS styles
+  - Attaches button event handlers
+  - Implements drag-and-drop functionality
+  - Communicates via window.__impulse_onStop() and window.__impulse_onSnapshot()
+
+These files are **pure browser JavaScript** with:
+- No imports or require statements
+- No TypeScript syntax
+- No Node.js APIs
+- Full IDE IntelliSense support
+
+The TypeScript files (`event-capture.ts` and `recording-ui.ts`) load these files at runtime using `fs.readFileSync()` with `import.meta.url` for path resolution.
+
+**Benefits:**
+- ✅ Full JavaScript IntelliSense when editing injected code
+- ✅ Better syntax highlighting and error detection
+- ✅ Easier to maintain and debug
+- ✅ Cleaner separation between Node.js and browser code
+- ✅ Changes are picked up at runtime without recompilation
+
+### 7. Auto-Save on Exit
 
 Recording automatically saves pending actions when:
 
@@ -104,14 +142,14 @@ Recording automatically saves pending actions when:
 
 This ensures no user interactions are lost.
 
-### 7. Event Injection Strategy
+### 8. Event Injection Strategy
 
 Uses a dual-injection approach for persistence:
 
 - `page.evaluateOnNewDocument()` - Ensures listeners are injected on all future navigations
 - `injectListeners()` - Manually injects listeners on current page after initial load
 - Event listeners persist across navigation automatically
-- Filters out impulse UI elements using `isImpulseUI()` helper
+- Filters out impulse UI elements using `isImpulseUI()` helper that checks for `#__impulse-testing__ui` container
 
 ## Integration Points
 
@@ -169,16 +207,22 @@ src/core/                      # Shared utilities
 ├── constants.ts               # Project constants
 ├── types.ts                   # TypeScript types
 ├── config-loader.ts           # Config loading with Zod
-└── lifecycle-manager.ts       # App lifecycle with Execa
+├── start-app.ts               # App startup lifecycle
+├── stop-app.ts                # App shutdown lifecycle
+└── utils/
+    └── execute-command.ts     # Command execution with Execa
 
 src/recorder/                  # Recorder module
 ├── index.ts                   # Main orchestrator
 ├── browser-manager.ts         # Puppeteer browser launch
-├── event-capture.ts           # Event tracking system
+├── event-capture.ts           # Event tracking system (loads injected code)
 ├── selector-generator.ts      # Selector generation
 ├── screenshot-manager.ts      # Screenshot capture
-├── recording-ui.ts            # Injected UI
-└── story-updater.ts           # Story file updates
+├── recording-ui.ts            # Injected UI (loads injected code)
+├── story-updater.ts           # Story file updates
+└── injected/                  # Browser-side JavaScript
+    ├── event-capture-client.js    # Event capture logic
+    └── recording-ui-client.js     # Recording UI implementation
 
 src/cli/callbacks/create-new-story/
 ├── handler.ts                 # Invokes recorder.startRecording()
@@ -216,12 +260,17 @@ Actions are appended to existing story.yml:
 
 ### Selector Generation in Browser Context
 
-The selector generation logic is duplicated in two places:
+The selector generation logic exists in two places:
 
-1. **selector-generator.ts** - Node.js version (currently unused)
-2. **event-capture.ts** - Injected into page context for runtime generation
+1. **selector-generator.ts** - Node.js version (currently unused, may be used by runner module)
+2. **injected/event-capture-client.js** - Browser version for runtime generation
 
-The browser version generates selectors inline to avoid serialization issues.
+The browser version is embedded in the injected event capture code to:
+- Avoid serialization issues with passing Element objects
+- Generate selectors immediately when events fire
+- Keep the logic colocated with event handling
+
+Both implementations follow the same priority: id → data-testid → data-test → complex path-based selector.
 
 ## Error Handling
 
@@ -342,7 +391,7 @@ The following are NOT yet implemented:
 
 ## Known Limitations
 
-1. **Selector generation** runs in browser context, so the selector-generator.ts file is not used
+1. **Selector generation** runs in browser context via injected/event-capture-client.js, so the selector-generator.ts file is currently unused
 2. **Input grouping** doesn't split inputs mid-typing (only at snapshots)
 3. **Navigation events** are detected but don't trigger automatic snapshots
 4. **Iframes** are not currently supported
