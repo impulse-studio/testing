@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { createStoryOnboarding, createStoryFile } from './create-story';
+import { createStoryOnboarding, createStoryFile } from './create-story.js';
 import { startRecording } from '@/recorder';
 
 export async function handleCreateNewStory(): Promise<void> {

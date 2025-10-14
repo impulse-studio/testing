@@ -2,11 +2,11 @@ import chalk from 'chalk';
 import { loadConfig } from '@/core/config-loader';
 import { startApp } from '@/core/start-app';
 import { stopApp } from '@/core/stop-app';
-import { loadStory, appendActions } from './story-updater';
-import { launchBrowser, type BrowserInstance } from './browser-manager';
-import { EventCapture } from './event-capture';
-import { injectRecordingUI, removeRecordingUI } from './recording-ui';
-import { takeScreenshot } from './screenshot-manager';
+import { loadStory, appendActions } from './story-updater.js';
+import { launchBrowser, type BrowserInstance } from './browser-manager.js';
+import { EventCapture } from './event-capture.js';
+import { injectRecordingUI, removeRecordingUI } from './recording-ui.js';
+import { takeScreenshot } from './screenshot-manager.js';
 import type { Config } from '@/core/types';
 
 /**

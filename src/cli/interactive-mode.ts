@@ -1,8 +1,8 @@
 import { select, Separator } from '@inquirer/prompts';
 import chalk from 'chalk';
-import { listStories } from './list-stories';
-import { handleCreateNewStory } from './callbacks/create-new-story/handler';
-import { handleExistingStory } from './callbacks/existing-story/handler';
+import { listStories } from './list-stories.js';
+import { handleCreateNewStory } from './callbacks/create-new-story/handler.js';
+import { handleExistingStory } from './callbacks/existing-story/handler.js';
 
 const CREATE_NEW_OPTION = '__create_new__';
 

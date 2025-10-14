@@ -47,11 +47,25 @@ The main runner orchestrates the complete test execution lifecycle:
 3. **Start application** using lifecycle commands
 4. **Launch headless browser** with story viewport settings
 5. **Execute actions sequentially** with error handling
-6. **Resolve screenshot mismatches** interactively if needed
+6. **Resolve screenshot mismatches** (interactive or automated based on `ciMode` option)
 7. **Determine final pass/fail status** based on all results
 8. **Clean up resources** (browser, application processes)
 
 The orchestrator continues executing remaining actions even if one fails, collecting all results for comprehensive reporting.
+
+#### Execution Options
+
+The `runStory()` function accepts an optional `RunStoryOptions` parameter:
+
+```typescript
+interface RunStoryOptions {
+  ciMode?: boolean;  // Default: false
+}
+```
+
+This option controls screenshot resolution behavior:
+- `ciMode: false` (default): Interactive resolution with VS Code diff viewer and user prompts
+- `ciMode: true`: Automated resolution that auto-fails on mismatches (no prompts)
 
 ### 2. Browser Management
 
@@ -109,9 +123,13 @@ Performs pixel-by-pixel comparison using pixelmatch library:
 
 ### 5. Screenshot Resolution Workflow
 
-Interactive visual resolution using VS Code diff viewer:
+The runner supports two execution modes for screenshot resolution: **Interactive Mode** (default) and **CI Mode** (non-interactive).
 
-#### Resolution Flow
+#### Execution Modes
+
+##### Interactive Mode (Default)
+
+Interactive visual resolution using VS Code diff viewer:
 
 1. **Detect mismatches** during story execution
 2. **Queue all mismatches** for batch resolution at the end
@@ -130,15 +148,42 @@ Interactive visual resolution using VS Code diff viewer:
 7. **Update story status** based on resolution choices
 8. **Clean up temp files** after resolution
 
-#### Resolution Features
+**Interactive Mode Features:**
+- Visual diff viewer: Side-by-side comparison in VS Code for easy evaluation
+- Non-blocking launch: VS Code runs detached, doesn't block the prompt
+- Interactive CLI prompt: Arrow-key navigation with clear descriptions
+- Timeout handling: 5-minute default timeout with fallback to KEEP_OLD
+- Sequential resolution: Processes one mismatch at a time for clarity
+- Baseline updates: Automatically replaces old screenshot when accepting changes
+- Graceful degradation: Continues with prompt if VS Code is unavailable
 
-- **Visual diff viewer**: Side-by-side comparison in VS Code for easy evaluation
-- **Non-blocking launch**: VS Code runs detached, doesn't block the prompt
-- **Interactive CLI prompt**: Arrow-key navigation with clear descriptions
-- **Timeout handling**: 5-minute default timeout with fallback to KEEP_OLD
-- **Sequential resolution**: Processes one mismatch at a time for clarity
-- **Baseline updates**: Automatically replaces old screenshot when accepting changes
-- **Graceful degradation**: Continues with prompt if VS Code is unavailable
+##### CI Mode (Non-Interactive)
+
+Automated resolution for CI/CD pipelines and automated testing environments:
+
+1. **Detect mismatches** during story execution
+2. **Automatically choose KEEP_OLD** for all mismatches
+3. **Mark test as failed** (no baseline updates)
+4. **No user interaction** required
+
+**CI Mode Features:**
+- No interactive prompts: Fully automated execution
+- No VS Code diff viewer: Suitable for headless environments
+- Deterministic behavior: Always fails on screenshot mismatch
+- Fast execution: No waiting for user input
+- CI/CD friendly: Proper exit codes for pipeline integration
+
+#### Resolution Behavior Comparison
+
+| Aspect | Interactive Mode | CI Mode |
+|--------|-----------------|---------|
+| **User Interaction** | Required for mismatches | None |
+| **VS Code Diff Viewer** | Opens for each mismatch | Not opened |
+| **Screenshot Mismatch** | User chooses KEEP_OLD or KEEP_NEW | Automatically KEEP_OLD (fail) |
+| **Baseline Updates** | Possible (if user chooses KEEP_NEW) | Never updated |
+| **Timeout** | 5-minute default | N/A (immediate decision) |
+| **Use Case** | Local development | CI/CD pipelines |
+| **Environment** | Developer workstation with VS Code | Any environment (including headless) |
 
 ### 6. Error Handling and Diagnostics
 
@@ -200,9 +245,31 @@ Story passes if:
 
 The runner is invoked by the CLI in several contexts:
 
-1. **Interactive mode**: User selects existing story → runner executes it
-2. **CI mode** (`--ci` flag): Runner executes all stories in batch
-3. **Single story mode**: Runner executes specific story by ID
+1. **Interactive mode**: User selects existing story → runner executes it with default settings (interactive screenshot resolution)
+2. **CI mode** (`--ci` flag): Runner executes all stories in batch with `ciMode: true` option
+   - Auto-fails on screenshot mismatches (no prompts)
+   - See `src/cli/callbacks/ci-mode/handler.ts:150` for implementation
+3. **Single story mode**: Runner executes specific story by ID with default settings
+4. **Multiple story mode** (`--story` flag): Runner executes specified stories with interactive screenshot resolution
+
+#### CLI to Runner Option Mapping
+
+| CLI Flag | Runner Option | Behavior |
+|----------|---------------|----------|
+| `--ci` | `{ ciMode: true }` | Non-interactive execution, auto-fail on screenshot mismatch |
+| (default) | `{}` or `{ ciMode: false }` | Interactive execution, user resolves screenshot mismatches |
+| `--story` | `{}` | Interactive execution for specific stories |
+| `--ci --story` | `{ ciMode: true }` | Non-interactive execution for specific stories |
+
+The CLI passes the `ciMode` option to the runner when invoking `runStory()`:
+
+```typescript
+// In CI mode handler (src/cli/callbacks/ci-mode/handler.ts)
+const result = await runStory(storyId, { ciMode: true });
+
+// In interactive/single story modes
+const result = await runStory(storyId);  // ciMode defaults to false
+```
 
 ### Configuration Requirements
 
@@ -307,9 +374,29 @@ Uses pixelmatch with the following parameters:
 - **Padding strategy**: Transparent pixels for dimension mismatches
 - **Output**: Number of different pixels + visual diff image
 
-### Resolution Prompt Format
+### Resolution Implementation Details
 
-Interactive CLI prompt structure:
+The screenshot resolver (`src/runner/screenshot-resolver.ts`) supports both interactive and CI modes through the `ResolveScreenshotsOptions` interface:
+
+```typescript
+interface ResolveScreenshotsOptions {
+  timeout?: number;      // Default: 300000 (5 minutes)
+  ciMode?: boolean;      // Default: false
+}
+```
+
+#### Interactive Mode Implementation
+
+When `ciMode` is `false` or undefined (default):
+
+1. Calls `openDiffViewer()` to launch VS Code with `code --diff oldPath newPath`
+2. Calls `promptUserChoice()` to show @inquirer/prompts selection
+3. Races between user selection and timeout (default 5 minutes)
+4. On `KEEP_NEW`: copies new screenshot over baseline using `copyFile()`
+5. On `KEEP_OLD` or timeout: leaves baseline unchanged
+6. Kills VS Code subprocess after resolution
+
+**Interactive Prompt Structure:**
 
 ```
 ? Resolve screenshot mismatch: {name}
@@ -321,6 +408,28 @@ Interactive CLI prompt structure:
 ```
 
 User navigates with arrow keys and presses Enter to confirm choice. The VS Code diff viewer remains open during selection for visual reference.
+
+#### CI Mode Implementation
+
+When `ciMode` is `true`:
+
+1. Immediately returns `{ choice: 'KEEP_OLD', updated: false }` for each mismatch
+2. Skips `openDiffViewer()` call (no VS Code launch)
+3. Skips `promptUserChoice()` call (no interactive prompt)
+4. Baseline screenshots are never modified
+5. Test is marked as failed due to mismatch
+
+**Implementation Reference:**
+```typescript
+// In src/runner/screenshot-resolver.ts:126-133
+if (ciMode) {
+  return {
+    name: mismatch.name,
+    choice: 'KEEP_OLD',
+    updated: false,
+  };
+}
+```
 
 ### Error Screenshot Naming
 
@@ -440,6 +549,20 @@ $0 --ci         # Run all stories
 
 ### Programmatic Usage
 
+The runner exposes a `runStory()` function that accepts an optional `RunStoryOptions` parameter:
+
+```typescript
+export interface RunStoryOptions {
+  /**
+   * CI mode: automatically fail on screenshot mismatches (no interactive prompts)
+   * @default false
+   */
+  ciMode?: boolean;
+}
+```
+
+#### Example: Interactive Mode (Default)
+
 ```typescript
 import { runStory } from './runner';
 
@@ -465,6 +588,36 @@ if (result.success) {
   result.screenshotResolutions.forEach(sr => {
     console.log(`Screenshot ${sr.name}: ${sr.choice} (updated: ${sr.updated})`);
   });
+}
+```
+
+#### Example: CI Mode (Non-Interactive)
+
+```typescript
+import { runStory } from './runner';
+
+// Run in CI mode - no interactive prompts, auto-fail on screenshot mismatch
+const result = await runStory('my-story-id', { ciMode: true });
+
+if (result.success) {
+  console.log('✓ Story passed!');
+  process.exit(0);
+} else {
+  console.error('✗ Story failed');
+
+  // In CI mode, screenshot resolutions will always show choice: 'KEEP_OLD'
+  result.actionResults
+    .filter(ar => !ar.passed)
+    .forEach(ar => {
+      if (ar.action.type === 'screenshot' && ar.comparisonResult) {
+        console.error(`Screenshot mismatch: ${ar.action.name}`);
+        console.error(`  Diff: ${ar.comparisonResult.diffPercentage.toFixed(2)}%`);
+      } else if (ar.error) {
+        console.error(`Action failed: ${ar.error.message}`);
+      }
+    });
+
+  process.exit(1);
 }
 ```
 
@@ -528,13 +681,13 @@ The following are NOT yet implemented:
 ## Known Limitations
 
 1. **Sequential execution only**: Stories run one at a time (no parallelization)
-2. **Screenshot resolution required**: CI mode fails on mismatches (no auto-accept)
-3. **Single browser context**: Each story runs in isolation (no state sharing)
-4. **Fixed timeout**: 30-second timeout not configurable per action
-5. **No iframe support**: Actions cannot target elements inside iframes
-6. **No shadow DOM**: Elements in shadow DOM cannot be selected
-7. **VS Code dependency**: Interactive resolution requires VS Code CLI for diff viewer (gracefully degrades if unavailable)
-8. **Full page error screenshots**: May be very large for long pages
+2. **Single browser context**: Each story runs in isolation (no state sharing)
+3. **Fixed timeout**: 30-second timeout not configurable per action
+4. **No iframe support**: Actions cannot target elements inside iframes
+5. **No shadow DOM**: Elements in shadow DOM cannot be selected
+6. **VS Code dependency**: Interactive resolution requires VS Code CLI for diff viewer (gracefully degrades if unavailable, CI mode doesn't require VS Code)
+7. **Full page error screenshots**: May be very large for long pages
+8. **No screenshot auto-acceptance**: In interactive mode, all mismatches require manual review (CI mode auto-fails as expected)
 
 ## Summary
 
@@ -543,10 +696,13 @@ The runner module provides a complete test execution system that:
 - Executes recorded stories in headless browser
 - Handles all action types with comprehensive error handling
 - Compares screenshots pixel-by-pixel using pixelmatch
-- Provides interactive visual resolution using VS Code diff viewer
+- Supports two execution modes:
+  - **Interactive Mode**: Visual resolution using VS Code diff viewer with user prompts
+  - **CI Mode**: Automated non-interactive execution for CI/CD pipelines
 - Captures diagnostic screenshots on failures
 - Manages application lifecycle automatically
 - Returns detailed execution results for reporting
 - Cleans up resources properly in all scenarios
+- Integrates seamlessly with CLI for both local development and CI/CD workflows
 
-The implementation is production-ready and follows all architectural guidelines defined in the impulse-testing-architecture document. It works seamlessly with stories created by the recorder module and provides a robust foundation for automated testing workflows.
+The implementation is production-ready and follows all architectural guidelines defined in the impulse-testing-architecture document. It works seamlessly with stories created by the recorder module and provides a robust foundation for automated testing workflows in both local and CI/CD environments.

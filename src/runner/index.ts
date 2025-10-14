@@ -6,11 +6,11 @@ import { startApp } from '@/core/start-app';
 import { stopApp } from '@/core/stop-app';
 import { SCREENSHOTS_DIR } from '@/core/constants';
 import type { Action, ScreenshotAction } from '@/core/types';
-import { launchBrowser, type BrowserInstance } from './browser-manager';
-import { executeAction } from './action-executor';
-import { compareScreenshot, type ComparisonResult } from './screenshot-comparator';
-import { resolveScreenshots, type ScreenshotMismatch, type ResolutionResult } from './screenshot-resolver';
-import { captureErrorScreenshot, type ErrorResult } from './error-handler';
+import { launchBrowser, type BrowserInstance } from './browser-manager.js';
+import { executeAction } from './action-executor.js';
+import { compareScreenshot, type ComparisonResult } from './screenshot-comparator.js';
+import { resolveScreenshots, type ScreenshotMismatch, type ResolutionResult } from './screenshot-resolver.js';
+import { captureErrorScreenshot, type ErrorResult } from './error-handler.js';
 
 /**
  * Result of executing a single action
@@ -142,6 +142,17 @@ async function executeScreenshotAction(
 }
 
 /**
+ * Options for running a story
+ */
+export interface RunStoryOptions {
+  /**
+   * CI mode: automatically fail on screenshot mismatches (no interactive prompts)
+   * @default false
+   */
+  ciMode?: boolean;
+}
+
+/**
  * Run a complete story execution flow
  *
  * This function orchestrates:
@@ -154,6 +165,7 @@ async function executeScreenshotAction(
  * 7. Cleaning up resources
  *
  * @param storyId - ID of the story to execute
+ * @param options - Optional configuration for story execution
  * @returns Execution result with success status and detailed action results
  *
  * @example
@@ -171,7 +183,7 @@ async function executeScreenshotAction(
  * }
  * ```
  */
-export async function runStory(storyId: string): Promise<ExecutionResult> {
+export async function runStory(storyId: string, options: RunStoryOptions = {}): Promise<ExecutionResult> {
   let browserInstance: BrowserInstance | null = null;
   let cleanup: (() => Promise<void>) | null = null;
   const actionResults: ActionResult[] = [];
@@ -236,7 +248,10 @@ export async function runStory(storyId: string): Promise<ExecutionResult> {
     // 6. Resolve screenshot mismatches if any exist
     let screenshotResolutions: ScreenshotResolutionResult[] = [];
     if (screenshotMismatches.length > 0) {
-      const resolutionResults = await resolveScreenshots(screenshotMismatches);
+      const resolverOptions = options.ciMode !== undefined
+        ? { ciMode: options.ciMode }
+        : {};
+      const resolutionResults = await resolveScreenshots(screenshotMismatches, resolverOptions);
       screenshotResolutions = resolutionResults.map((result: ResolutionResult) => ({
         name: result.name,
         accepted: result.choice === 'KEEP_NEW',

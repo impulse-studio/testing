@@ -1,5 +1,5 @@
 import { execa } from 'execa';
-import type { LifecycleCommand } from '../types';
+import type { LifecycleCommand } from '../types.js';
 
 export interface RunningProcess {
   process: ReturnType<typeof execa>;

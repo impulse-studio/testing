@@ -1,7 +1,7 @@
 // Configuration types (inferred from Zod schemas)
 
-export type { LifecycleCommand } from './schemas/lifecycle-command-schema';
-export type { Config } from './schemas/config-schema';
+export type { LifecycleCommand } from './schemas/lifecycle-command-schema.js';
+export type { Config } from './schemas/config-schema.js';
 
 // Story types (manually defined)
 

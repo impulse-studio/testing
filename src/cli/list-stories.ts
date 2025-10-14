@@ -1,6 +1,6 @@
 import { readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
-import { readYamlFile } from './utils/yaml-helper';
+import { readYamlFile } from './utils/yaml-helper.js';
 
 interface StoryMetadata {
   id: string;

@@ -42,6 +42,184 @@ The creation flow follows a sequential onboarding pattern:
 4. **File Creation**: Creates story file with minimal required structure
 5. **Next Action**: Indicates recorder will open (placeholder for future integration)
 
+## CLI Execution Modes
+
+The CLI supports multiple execution modes to accommodate different workflows and environments:
+
+### 1. Default Interactive Mode
+
+The standard mode described above. Invoked when no flags are provided.
+
+**Usage:**
+```bash
+npx impulse-testing
+```
+
+### 2. Direct Story Creation Mode (`--new`)
+
+Skips the interactive selection menu and directly starts the story creation onboarding flow. Useful when you know you want to create a new story without browsing existing ones.
+
+**Usage:**
+```bash
+npx impulse-testing --new
+```
+
+**Behavior:**
+- Bypasses the interactive story list
+- Immediately starts the story creation workflow
+- Follows the same onboarding steps (name, ID, URL)
+- Creates the story file and indicates next steps
+
+### 3. Specific Story Execution Mode (`--story`)
+
+Runs one or more specific stories by their ID. Can be used multiple times to run multiple stories in sequence. Ideal for focused testing of specific user flows.
+
+**Usage:**
+```bash
+# Run a single story
+npx impulse-testing --story test1
+
+# Run multiple stories
+npx impulse-testing --story test1 --story test2 --story test3
+```
+
+**Behavior:**
+- Stories are executed sequentially in the order specified
+- Each story's execution is displayed with action-by-action results
+- Screenshot mismatches prompt for user resolution (KEEP_OLD or KEEP_NEW)
+- Displays individual results for each story
+- Shows a summary at the end with pass/fail counts
+- Exit code: 0 if all stories pass, 1 if any story fails
+
+### 4. CI Mode (`--ci`)
+
+Non-interactive execution mode designed for CI/CD pipelines and automated testing environments. Ensures reliable, deterministic test execution without requiring user interaction.
+
+**Usage:**
+```bash
+# Run all stories in CI mode
+npx impulse-testing --ci
+
+# Run specific stories in CI mode
+npx impulse-testing --ci --story test1 --story test2
+```
+
+**Behavior:**
+- **Non-interactive**: No user prompts or interaction required
+- **Screenshot Handling**: Mismatches automatically fail the test (KEEP_OLD behavior)
+- **Story Selection**:
+  - If `--story` is provided: runs only specified stories
+  - If no `--story` is provided: runs all available stories
+- **Output**: Clear pass/fail status for each action and story
+- **Summary**: Comprehensive CI summary with total/passed/failed counts
+- **Exit Codes**:
+  - 0 if all stories pass
+  - 1 if any story fails
+- **Empty State**: Exits with code 0 if no stories are found
+
+**Integration with CI/CD:**
+The CI mode is specifically designed for integration with CI/CD pipelines. The deterministic behavior (auto-fail on screenshot mismatch) ensures tests don't hang waiting for user input, and proper exit codes enable pipeline automation.
+
+## CLI Options Reference
+
+### Help and Version
+
+Commander.js automatically provides built-in flags for help and version information:
+
+| Flag | Description |
+|------|-------------|
+| `-h, --help` | Display help information with usage examples |
+| `-V, --version` | Display version number |
+
+**Help Output Includes:**
+- All available options with descriptions
+- Practical usage examples showing common flag combinations
+- Default values for options
+
+**Usage:**
+```bash
+npx impulse-testing --help
+npx impulse-testing -V
+```
+
+### Available Flags
+
+| Flag | Type | Description | Repeatable | Default |
+|------|------|-------------|------------|---------|
+| `--new` | Boolean | Create new story directly, skipping interactive menu | No | false |
+| `--story <id>` | String | Run specific story by ID | Yes | [] |
+| `--ci` | Boolean | Run in CI mode (non-interactive) | No | false |
+
+### Flag Combinations
+
+- `--new` and `--story` cannot be used together (mutually exclusive with default mode)
+- `--ci` can be used alone (runs all stories) or with `--story` (runs specific stories)
+- `--story` can be used alone (interactive screenshot resolution) or with `--ci` (auto-fail on mismatch)
+- No flags: defaults to interactive mode
+
+## Implementation Details
+
+### Command-Line Parsing
+
+The CLI uses **Commander.js** for parsing command-line arguments:
+
+```typescript
+program
+  .option('--new', 'Create a new story without interactive menu')
+  .option('--story <id>', 'Run specific story by ID (can be used multiple times)', collect, [])
+  .option('--ci', 'Run in CI mode (non-interactive, auto-fail on screenshot mismatch)');
+```
+
+**Accumulating Multiple Values:**
+The `--story` flag uses a `collect` helper function to accumulate multiple values when the flag is used multiple times:
+
+```typescript
+function collect(value: string, previous: string[]): string[] {
+  return previous.concat([value]);
+}
+```
+
+This allows users to specify multiple stories: `--story test1 --story test2` results in `options.story = ['test1', 'test2']`.
+
+**Custom Help Text:**
+The CLI uses `.addHelpText('after', ...)` to append practical usage examples to the automatically generated help output (see `src/cli/index.ts:26-35`). This provides users with real-world command examples demonstrating various flag combinations and common workflows.
+
+### Routing Logic
+
+The main action handler routes to different modes based on flag precedence:
+
+```typescript
+// Priority order:
+// 1. --new (direct story creation)
+// 2. --ci (CI mode execution)
+// 3. --story (specific story execution)
+// 4. default (interactive mode)
+```
+
+This ensures clear, predictable behavior when flags are combined.
+
+### CI Mode Integration
+
+The CI mode passes a `ciMode` option to the runner module:
+
+```typescript
+const result = await runStory(storyId, { ciMode: true });
+```
+
+This option instructs the runner to:
+- Skip interactive screenshot resolution prompts
+- Automatically treat screenshot mismatches as failures
+- Use KEEP_OLD behavior for all screenshot comparisons
+
+### Module References
+
+**Implementation Files:**
+- `src/cli/index.ts:19-51` - CLI option definitions and routing logic
+- `src/cli/callbacks/run-multiple-stories/handler.ts:115-151` - Multiple story execution handler
+- `src/cli/callbacks/ci-mode/handler.ts:117-180` - CI mode handler
+- `src/cli/callbacks/create-new-story/handler.ts` - Story creation handler
+- `src/cli/interactive-mode.ts` - Interactive mode handler
+
 ### Story File Structure
 
 Created story files contain minimal configuration:
@@ -80,14 +258,14 @@ Created story files contain minimal configuration:
 
 ## Integration Points
 
-### Recorder Module (TODO)
+### Recorder Module
 When story creation completes, the recorder module should:
 - Receive the story file path
 - Open a controlled browser
 - Capture user interactions
 - Write actions to the story file
 
-### Runner Module (TODO)
+### Runner Module
 When selecting an existing story, the runner module should:
 - Receive the story ID
 - Execute the story's actions

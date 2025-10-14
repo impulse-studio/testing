@@ -1,5 +1,5 @@
-import { executeCommand } from './utils/execute-command';
-import type { Config } from './types';
+import { executeCommand } from './utils/execute-command.js';
+import type { Config } from './types.js';
 
 /**
  * Stop the application by executing cleanup function and lifecycle.stop commands

@@ -1,5 +1,5 @@
-import { executeCommand, type RunningProcess } from './utils/execute-command';
-import type { Config } from './types';
+import { executeCommand, type RunningProcess } from './utils/execute-command.js';
+import type { Config } from './types.js';
 
 /**
  * Start the application using lifecycle.start commands

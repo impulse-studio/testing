@@ -52,6 +52,11 @@ export interface ResolveScreenshotsOptions {
    * @default 300000 (5 minutes)
    */
   timeout?: number;
+  /**
+   * CI mode: automatically choose KEEP_OLD for all mismatches (no interactive prompts)
+   * @default false
+   */
+  ciMode?: boolean;
 }
 
 /**
@@ -116,7 +121,16 @@ async function resolveSingleMismatch(
   mismatch: ScreenshotMismatch,
   options: ResolveScreenshotsOptions,
 ): Promise<ResolutionResult> {
-  const { timeout = 300000 } = options;
+  const { timeout = 300000, ciMode = false } = options;
+
+  // In CI mode, automatically choose KEEP_OLD (fail the test)
+  if (ciMode) {
+    return {
+      name: mismatch.name,
+      choice: 'KEEP_OLD',
+      updated: false,
+    };
+  }
 
   // Open VS Code diff viewer and capture subprocess reference
   const vscodeProcess = openDiffViewer(mismatch.oldPath, mismatch.newPath);

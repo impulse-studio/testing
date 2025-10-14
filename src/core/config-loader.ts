@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { readYamlFile } from '@/cli/utils/yaml-helper';
-import { configSchema, type Config } from './schemas/config-schema';
-import { CONFIG_FILE } from './constants';
+import { configSchema, type Config } from './schemas/config-schema.js';
+import { CONFIG_FILE } from './constants.js';
 
 /**
  * Load and validate the configuration file
