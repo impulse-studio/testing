@@ -1,4 +1,3 @@
-export const WEBUI_PORT = 3303;
 export const TESTING_DIR = '.testing';
 export const CONFIG_FILE = '.testing/config.yml';
 export const STORIES_DIR = '.testing/stories';

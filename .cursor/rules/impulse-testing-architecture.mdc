@@ -13,12 +13,10 @@ Impulse Testing is an E2E testing library that opens applications locally and us
 1. **Ask Before Implementing**: For ALL technical decisions (libraries, frameworks, implementation approaches), you MUST ask the user for approval before proceeding. The only exceptions are the technologies explicitly defined in this document.
 2. **Module Isolation**: Each module should be independent and communicate through well-defined interfaces.
 3. **YAML-Based Storage**: All configuration and user stories are stored as YAML files in `.testing/` directory.
-4. **Port 3303**: The Web UI always runs on port 3303 by default.
 
 ## Approved Technologies
 
 The following technologies have been pre-approved:
-- **Next.js**: For the Web UI module (running on port 3303)
 - **Puppeteer**: For browser automation and recording
 - **TypeScript**: For all source code
 - **Node.js**: Runtime environment (>=18.0.0)
@@ -40,7 +38,7 @@ After user approval, the following have been added:
 
 ## Module Architecture
 
-The library is composed of 4 main modules:
+The library is composed of 3 main modules:
 
 ### 1. CLI Module (`src/cli/`) - ✅ IMPLEMENTED
 
@@ -78,8 +76,7 @@ $0 --new        # Recording mode: Create new user story
 - YAML for file operations
 
 **Interface with other modules**:
-- Calls **Web UI Module** in default mode (TODO)
-- Calls **Testing Module** in `--ci` mode (TODO)
+- Calls **Testing Module** in default/`--ci`/`--story` modes (✅ IMPLEMENTED)
 - Calls **Story Creator Module** in `--new` mode (✅ IMPLEMENTED)
 
 ---
@@ -153,53 +150,12 @@ actions:
 - Page: `titleEquals`, `titleContains`
 
 **Interface with other modules**:
-- Can be invoked by **CLI Module** or **Web UI Module**
+- Invoked by **CLI Module**
 - Uses configuration loaded by **CLI Module**
 
 ---
 
-### 3. Web UI Module (`src/webui/`) - TODO
-
-**Responsibility**: Provide an interactive Next.js interface for managing user stories and viewing test results.
-
-**Core Functionality**:
-- Run Next.js server on port 3303
-- List all user stories from `.testing/stories/`
-- View individual story details (steps, actions, assertions)
-- Display screenshots captured during tests
-- Edit story steps, actions, and assertions
-- Configure when screenshots are taken
-- Trigger test execution (single story or all stories)
-- Display real-time test execution progress
-- Show test results and failure details
-- Edit `.testing/config.yml` through UI
-
-**Technology**:
-- **Next.js App Router** (confirmed technology)
-- Port: **3303** (fixed, non-configurable)
-
-**UI Pages/Features**:
-- Dashboard: Overview of all stories, recent test runs, statistics
-- Stories List: Table/grid of all user stories with tags, status, last run
-- Story Editor: Edit story metadata, steps, actions, assertions
-- Story Viewer: View story execution with screenshots and results
-- Configuration Editor: Edit `.testing/config.yml` through UI
-- Test Runner: Trigger tests and show real-time progress
-- Reports Viewer: View test reports and failure details
-
-**Lifecycle**:
-- **CLI Module** starts the Next.js server on port 3303
-- Server manages its own lifecycle (auto-start/stop)
-- Server process is terminated when CLI exits
-
-**Interface with other modules**:
-- Invoked by **CLI Module** in default mode
-- Calls **Testing Module** to execute stories
-- Reads/writes files managed by all modules
-
----
-
-### 4. Story Creator Module (`src/recorder/`) - ✅ IMPLEMENTED
+### 3. Story Creator Module (`src/recorder/`) - ✅ IMPLEMENTED
 
 **Status**: Completed and functional
 
@@ -253,12 +209,12 @@ The recorder MUST generate stable, reliable CSS selectors:
 **Important**:
 - Recording happens in **headed** mode (browser visible)
 - User performs actions naturally
-- After recording, the story can be edited in **Web UI Module**
-- Screenshots and actions can be customized post-recording
+- After recording, the story YAML file can be manually edited
+- Screenshots and actions can be customized by editing the story file
 
 **Interface with other modules**:
 - Invoked by **CLI Module** in `--new` mode
-- Creates files that **Testing Module** and **Web UI Module** read
+- Creates files that **Testing Module** reads
 
 ---
 
@@ -301,20 +257,6 @@ src/recorder/                       # Story Creator Module (IMPLEMENTED)
 ├── event-listener.ts               # Browser event capture
 ├── selector-generator.ts           # Generate stable CSS selectors
 └── dom-capture.ts                  # Capture DOM state and screenshots
-
-src/webui/                          # Web UI Module (TODO)
-├── app/                            # Next.js App Router
-│   ├── page.tsx                    # Dashboard
-│   ├── stories/                    # Story pages
-│   │   ├── page.tsx                # Stories list
-│   │   └── [id]/page.tsx           # Story detail/editor
-│   └── api/                        # API routes
-│       ├── stories/                # Story CRUD operations
-│       ├── config/                 # Config read/write
-│       └── run/                    # Trigger test execution
-├── components/                     # React components
-│   └── ...
-└── lib/                            # Client-side utilities
 
 src/core/                           # Shared utilities (TODO)
 ├── constants.ts                    # Constants (ports, paths, defaults)
@@ -378,7 +320,6 @@ reporters:
 **Notes**:
 - The **Testing Module** uses this config to manage app/database lifecycle
 - The **Story Creator Module** uses this config to know where to navigate
-- The **Web UI Module** reads/writes this file through its API
 - This file MUST be loaded and validated before any module executes
 
 ---
@@ -389,31 +330,30 @@ reporters:
 ┌─────────────────────────────────────────────────────────┐
 │                      CLI Module                         │
 │  (Entry point, orchestrates based on arguments)         │
-└────┬──────────────────┬─────────────────┬──────────────┘
-     │                  │                 │
-     │ Default Mode     │ --ci Mode       │ --new Mode
-     │                  │                 │
-┌────▼─────────┐  ┌────▼──────────┐  ┌──▼───────────────┐
-│  Web UI      │  │   Testing      │  │  Story Creator   │
-│  Module      │  │   Module       │  │  Module          │
-│              │  │                │  │                  │
-│ - Next.js UI │  │ - Load stories │  │ - Launch browser │
-│ - Port 3303  │  │ - Run tests    │  │ - Record events  │
-│ - Story mgmt │  │ - Generate     │  │ - Save story     │
-│ - Can invoke │  │   reports      │  │                  │
-│   Testing    │  │                │  │                  │
-│   Module     │  │                │  │                  │
-└──────────────┘  └────────────────┘  └──────────────────┘
-     │                  │                     │
-     └──────────────────┼─────────────────────┘
-                        │
-            ┌───────────▼────────────┐
-            │  Shared Storage Layer  │
-            │                        │
-            │  .testing/config.json  │
-            │  .testing/stories/     │
-            │  .testing/screenshots/ │
-            └────────────────────────┘
+└────┬─────────────────────────────────────┬──────────────┘
+     │                                     │
+     │ Default/--ci/--story Mode           │ --new Mode
+     │                                     │
+┌────▼──────────┐                    ┌────▼───────────────┐
+│   Testing     │                    │  Story Creator     │
+│   Module      │                    │  Module            │
+│               │                    │                    │
+│ - Load stories│                    │ - Launch browser   │
+│ - Run tests   │                    │ - Record events    │
+│ - Generate    │                    │ - Save story       │
+│   reports     │                    │                    │
+│               │                    │                    │
+└───────────────┘                    └────────────────────┘
+     │                                     │
+     └─────────────────┬───────────────────┘
+                       │
+           ┌───────────▼────────────┐
+           │  Shared Storage Layer  │
+           │                        │
+           │  .testing/config.yml   │
+           │  .testing/stories/     │
+           │  .testing/screenshots/ │
+           └────────────────────────┘
 ```
 
 ---
@@ -438,7 +378,6 @@ reporters:
 
 Create a `src/core/constants.ts` file with:
 ```typescript
-export const WEBUI_PORT = 3303;
 export const TESTING_DIR = '.testing';
 export const CONFIG_FILE = '.testing/config.yml';
 export const STORIES_DIR = '.testing/stories';
@@ -457,10 +396,10 @@ export const STORY_FILE = 'story.yml';
 
 ## Development Workflow
 
-1. **Initialize Project**: User runs `$0 init` to create `.testing/` directory and default `config.json`
+1. **Initialize Project**: User runs `$0 init` to create `.testing/` directory and default `config.yml`
 2. **Record Stories**: User runs `$0 --new` to create user stories
-3. **Edit Stories**: User runs `$0` (Web UI) to edit/refine stories
-4. **Run Tests Locally**: User runs `$0` (Web UI) to execute tests and see results
+3. **Edit Stories**: User manually edits story YAML files in `.testing/stories/`
+4. **Run Tests Locally**: User runs `$0` (interactive mode) to select and execute stories
 5. **Run Tests in CI**: User runs `$0 --ci` in CI pipeline
 
 ---
@@ -468,24 +407,21 @@ export const STORY_FILE = 'story.yml';
 ## Key Design Decisions
 
 1. **YAML Storage**: Human-readable, version-controllable, no database dependency
-2. **Port 3303**: Fixed port for Web UI to avoid conflicts
-3. **Separate Stories Directory**: Each story is a separate file for easy version control
-4. **Post-Recording Editing**: Recording creates raw data, Web UI allows refinement
-5. **Headless vs Headed**: Recording is headed, testing/CI is headless
-6. **Screenshot Auto-Capture**: Screenshots captured automatically but configurable
-7. **Lifecycle Management**: Library handles app/database lifecycle completely
+2. **Separate Stories Directory**: Each story is a separate file for easy version control
+3. **Post-Recording Editing**: Recording creates raw data, which can be manually edited
+4. **Headless vs Headed**: Recording is headed, testing/CI is headless
+5. **Screenshot Auto-Capture**: Screenshots captured automatically but configurable
+6. **Lifecycle Management**: Library handles app/database lifecycle completely
 
 ---
 
 ## Important Reminders
 
-- ✅ **Next.js** is approved for Web UI Module
 - ✅ **Puppeteer** is approved for browser automation
 - ✅ **TypeScript** is approved for all code
-- ✅ **Port 3303** is fixed for Web UI
-- ❌ For EVERYTHING ELSE (validation libs, CLI parsers, UI components, state management, etc.), **ASK THE USER FIRST**
+- ❌ For EVERYTHING ELSE (validation libs, CLI parsers, testing frameworks, etc.), **ASK THE USER FIRST**
 - 🔄 All modules read/write to `.testing/` directory
-- 🔄 Config file `.testing/config.json` is the single source of truth for configuration
+- 🔄 Config file `.testing/config.yml` is the single source of truth for configuration
 - 🔄 The tested application's lifecycle (start/stop/database) is managed by the library based on config
 
 ---
@@ -499,23 +435,19 @@ Before implementing any part of the system, ask the user:
 3. **File System**: Use native fs or a library? (fs-extra, etc.)
 4. **Logging**: Which logging approach? (console, winston, pino, etc.)
 5. **Process Management**: How to spawn/manage app processes? (child_process, execa, etc.)
-6. **UI Components**: Which component library for Web UI? (shadcn, MUI, custom, etc.)
-7. **State Management**: How to manage state in Web UI? (React state, Zustand, Redux, etc.)
-8. **Styling**: How to style Web UI? (Tailwind, CSS Modules, styled-components, etc.)
-9. **Testing**: Which testing framework? (Jest, Vitest, etc.)
-10. **Build Tool**: Which build tool? (tsup, esbuild, webpack, etc.)
+6. **Testing**: Which testing framework? (Jest, Vitest, etc.)
+7. **Build Tool**: Which build tool? (tsup, esbuild, webpack, etc.)
 
 ---
 
 ## Summary
 
-This testing library consists of 4 independent modules orchestrated by a CLI entry point:
+This testing library consists of 3 independent modules orchestrated by a CLI entry point:
 
-1. **CLI Module**: Routes to appropriate mode
+1. **CLI Module**: Routes to appropriate mode and provides interactive story selection
 2. **Testing Module**: Executes user stories headlessly in CI
-3. **Web UI Module**: Manages stories and displays results (Next.js on port 3303)
-4. **Story Creator Module**: Records user interactions into story files
+3. **Story Creator Module**: Records user interactions into story files
 
-All data is stored in `.testing/` directory with YAML files. The library manages the complete lifecycle of the tested application including database setup/teardown.
+All data is stored in `.testing/` directory with YAML files. The library manages the complete lifecycle of the tested application including database setup/teardown. Story management and editing is done through the CLI and manual YAML editing.
 
 **ALWAYS ask the user before making technical implementation decisions beyond the pre-approved technologies.**

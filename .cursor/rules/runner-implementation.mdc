@@ -27,7 +27,7 @@ The runner module consists of six core components that work together to execute 
 
 ### Core Infrastructure (src/core/)
 
-Shared utilities used by recorder, runner, and webui modules:
+Shared utilities used by recorder and runner modules:
 
 - **constants.ts**: Project-wide constants (ports, paths, file names)
 - **types.ts**: TypeScript type definitions for Config, Story, Actions

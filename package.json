@@ -1,7 +1,7 @@
 {
   "name": "@impulse/testing",
   "version": "0.0.0",
-  "description": "E2E testing library for Next.js applications with Puppeteer",
+  "description": "E2E testing library with Puppeteer for browser automation",
   "type": "module",
   "main": "./dist/cli/index.js",
   "types": "./dist/cli/index.d.ts",
@@ -19,7 +19,6 @@
     "e2e",
     "testing",
     "puppeteer",
-    "nextjs",
     "test-automation"
   ],
   "author": "",
@@ -32,8 +31,6 @@
     "@types/node": "^24.7.2",
     "@types/pixelmatch": "^5.2.6",
     "@types/pngjs": "^6.0.5",
-    "@types/react": "^19.2.2",
-    "@types/react-dom": "^19.2.1",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"
   },
@@ -43,12 +40,9 @@
     "commander": "^14.0.1",
     "css-selector-generator": "^3.7.0",
     "execa": "^9.6.0",
-    "next": "^15.5.4",
     "pixelmatch": "^6.0.0",
     "pngjs": "^7.0.0",
     "puppeteer": "^24.24.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
     "yaml": "^2.8.1",
     "zod": "^4.1.12"
   }

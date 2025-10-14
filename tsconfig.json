@@ -23,9 +23,6 @@
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
-
-    // JSX for Next.js
-    "jsx": "preserve",
     "incremental": true,
 
     // Module Detection
@@ -35,12 +32,6 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
 
-    // Next.js specific
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
     "paths": {
       "@/*": ["./src/*"]
     }
@@ -52,7 +43,6 @@
   "exclude": [
     "node_modules",
     "dist",
-    ".next",
     "demo"
   ]
 }

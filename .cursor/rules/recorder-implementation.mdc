@@ -18,7 +18,7 @@ The recorder module consists of several components working together to capture, 
 
 ### Core Infrastructure (src/core/)
 
-Shared utilities used by recorder, runner, and webui modules:
+Shared utilities used by recorder and runner modules:
 
 - **constants.ts**: Project-wide constants (ports, paths, file names)
 - **types.ts**: TypeScript type definitions for Config, Story, Actions
@@ -381,8 +381,6 @@ The following are NOT yet implemented:
 
 - Smart wait detection (runner module feature)
 - Screenshot comparison (runner module feature)
-- Edit mode for existing stories (webui module feature)
-- Assertion generation (may be added to recorder or webui)
 - Advanced selector strategies (XPath, custom attributes)
 - Screenshot diffing during recording
 - Undo/redo functionality
