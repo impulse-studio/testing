@@ -16,14 +16,15 @@
 - [x] Viewport configuration
 - [x] Timeout configuration
 - [x] Story execution with baseline comparison
+- [x] Init command for project bootstrapping (`--init` and `--config` flags)
+- [x] Interactive configuration wizard with command management
+- [x] Default config template generation (config.yml with lifecycle commands)
+- [x] .testing/ directory structure creation
+- [x] Project type auto-detection (Docker Compose, pnpm, npm, Bun, Yarn)
+- [x] .gitignore integration (.testing/.gitignore with temp/ exclusion)
+- [x] Centralized config validation at CLI entry point
 
 ## High Priority
-- [ ] Init command for project bootstrapping
-- [ ] Interactive configuration wizard
-- [ ] Default config template generation
-- [ ] .testing/ directory structure creation
-- [ ] Framework detection (Next.js, Vite, CRA, Express)
-- [ ] .gitignore integration
 - [ ] HTML report generation
 - [ ] JSON report generation
 - [ ] Report configuration options
