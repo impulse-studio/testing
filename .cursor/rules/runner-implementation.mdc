@@ -1,0 +1,552 @@
+---
+description: Runner Module Implementation Details
+---
+
+# Runner Module Implementation
+
+## Overview
+
+The runner module is responsible for executing recorded test stories in headless mode. It loads story files, executes actions sequentially, performs screenshot comparisons, handles errors with diagnostic screenshots, and provides interactive resolution for screenshot mismatches.
+
+## Module Status
+
+✅ **FULLY IMPLEMENTED**
+
+## Architecture
+
+The runner module consists of six core components that work together to execute test stories:
+
+### Runner Components (src/runner/)
+
+- **index.ts**: Main orchestrator that coordinates the complete test execution flow
+- **browser-manager.ts**: Launches Puppeteer in headless mode with story configuration
+- **action-executor.ts**: Executes individual actions (click, input, navigate, etc.)
+- **screenshot-comparator.ts**: Compares new screenshots against baseline images
+- **screenshot-resolver.ts**: Interactive resolution system for screenshot mismatches
+- **error-handler.ts**: Captures diagnostic screenshots when actions fail
+
+### Core Infrastructure (src/core/)
+
+Shared utilities used by recorder, runner, and webui modules:
+
+- **constants.ts**: Project-wide constants (ports, paths, file names)
+- **types.ts**: TypeScript type definitions for Config, Story, Actions
+- **config-loader.ts**: Loads and validates config.yml using Zod schemas
+- **start-app.ts**: Starts the application using lifecycle commands
+- **stop-app.ts**: Stops the application and executes cleanup commands
+- **utils/execute-command.ts**: Executes individual lifecycle commands using Execa
+
+## Key Features
+
+### 1. Story Execution Orchestration
+
+The main runner orchestrates the complete test execution lifecycle:
+
+1. **Load configuration** from `.testing/config.yml`
+2. **Load story** from `.testing/stories/{storyId}/story.yml`
+3. **Start application** using lifecycle commands
+4. **Launch headless browser** with story viewport settings
+5. **Execute actions sequentially** with error handling
+6. **Resolve screenshot mismatches** interactively if needed
+7. **Determine final pass/fail status** based on all results
+8. **Clean up resources** (browser, application processes)
+
+The orchestrator continues executing remaining actions even if one fails, collecting all results for comprehensive reporting.
+
+### 2. Browser Management
+
+Launches Puppeteer in headless mode with story-specific configuration:
+
+- **Headless mode**: Runs without visible UI (unlike recorder's headed mode)
+- **Viewport configuration**: Uses story's resolution settings (default 800x600)
+- **Device scale factor**: Applies from story configuration
+- **Pixel ratio**: Applies custom pixel ratio if specified
+- **Navigation settings**: Uses `networkidle2` wait strategy for initial page load
+- **Error handling**: Provides clear error messages if browser launch fails
+
+### 3. Action Execution
+
+Executes all supported action types with comprehensive error handling:
+
+#### Supported Actions
+
+- **Click**: Waits for selector visibility, then clicks the element
+- **Input**: Clears existing value (triple-click + backspace), then types new value
+- **Select**: Selects dropdown option by value
+- **Check/Uncheck**: Intelligently toggles only if current state differs from desired state
+- **Navigate**: Navigates to URL with `networkidle2` wait strategy
+- **Screenshot**: Handled separately by screenshot comparator (not executed here)
+
+#### Execution Strategy
+
+- **Default timeout**: 30 seconds for all selector waits
+- **Visibility requirement**: Elements must be visible before interaction
+- **Smart checkbox handling**: Checks current state before toggling to avoid double-clicks
+- **Input clearing**: Uses reliable triple-click method instead of evaluate
+- **Contextual errors**: Includes action type, selector, and values in error messages
+
+### 4. Screenshot Comparison
+
+Performs pixel-by-pixel comparison using pixelmatch library:
+
+#### Comparison Process
+
+1. **Take new screenshot** of current viewport (hides recording UI if present)
+2. **Load baseline screenshot** from `.testing/screenshots/{storyId}/{name}.png`
+3. **Ensure same dimensions** by padding smaller image with transparent pixels
+4. **Pixel-by-pixel comparison** using pixelmatch with 0.1 pixel-level sensitivity
+5. **Calculate diff percentage** from number of different pixels
+6. **Apply threshold check** (default 0.1% of total pixels)
+7. **Save to temp directory** if mismatch detected (`.testing/temp/{name}.png`)
+
+#### Comparison Features
+
+- **Viewport-only screenshots**: Matches recorder's screenshot behavior
+- **Automatic padding**: Handles dimension mismatches gracefully
+- **UI element hiding**: Hides `#__impulse-testing__ui` before capturing
+- **Missing baseline handling**: Treats missing baseline as 100% mismatch
+- **Configurable threshold**: Default 0.1% allows for minor rendering differences
+
+### 5. Screenshot Resolution Workflow
+
+Interactive visual resolution using VS Code diff viewer:
+
+#### Resolution Flow
+
+1. **Detect mismatches** during story execution
+2. **Queue all mismatches** for batch resolution at the end
+3. **Open VS Code diff viewer** for each mismatch (non-blocking)
+   - Launches `code --diff oldPath newPath` in detached mode
+   - Shows side-by-side visual comparison
+   - VS Code runs independently without blocking execution
+4. **Show interactive prompt** using @inquirer/prompts
+   - Prompt appears while VS Code is open
+   - Two choices: "Keep old screenshot (fail test)" or "Accept new screenshot (update baseline)"
+   - User navigates with arrow keys and confirms with Enter
+5. **Wait for user choice** with timeout
+6. **Apply resolution**:
+   - **KEEP_NEW**: Copy new screenshot over baseline (accept change)
+   - **KEEP_OLD**: Keep baseline unchanged (reject change)
+7. **Update story status** based on resolution choices
+8. **Clean up temp files** after resolution
+
+#### Resolution Features
+
+- **Visual diff viewer**: Side-by-side comparison in VS Code for easy evaluation
+- **Non-blocking launch**: VS Code runs detached, doesn't block the prompt
+- **Interactive CLI prompt**: Arrow-key navigation with clear descriptions
+- **Timeout handling**: 5-minute default timeout with fallback to KEEP_OLD
+- **Sequential resolution**: Processes one mismatch at a time for clarity
+- **Baseline updates**: Automatically replaces old screenshot when accepting changes
+- **Graceful degradation**: Continues with prompt if VS Code is unavailable
+
+### 6. Error Handling and Diagnostics
+
+Comprehensive error handling with diagnostic screenshots:
+
+#### Error Capture
+
+When any action fails:
+1. **Capture full-page screenshot** of current page state
+2. **Save to temp directory** as `error-{timestamp}.png`
+3. **Create structured error object** with:
+   - Original error message
+   - Action type that failed
+   - Selector involved (if applicable)
+   - Screenshot path for debugging
+   - ISO timestamp of failure
+4. **Continue execution** to collect all failures
+
+#### Error Types
+
+- **Selector not found**: Element doesn't exist or isn't visible within timeout
+- **Navigation failure**: Page failed to load or network issues
+- **Browser crash**: Unexpected browser process termination
+- **Timeout errors**: Action exceeded 30-second timeout
+- **Global errors**: Configuration loading, app startup, or other infrastructure failures
+
+### 7. Execution Results
+
+Comprehensive result structure for reporting:
+
+#### Action Results
+
+Each action produces an `ActionResult` containing:
+- **Index**: Zero-based position in action sequence
+- **Action**: The original action object
+- **Passed**: Boolean success status
+- **Error**: Structured error details if failed (with screenshot path)
+- **Comparison result**: Screenshot diff data (for screenshot actions only)
+
+#### Story Results
+
+Complete `ExecutionResult` includes:
+- **Story ID**: Identifier of executed story
+- **Success**: Overall pass/fail status
+- **Action results**: Array of individual action outcomes
+- **Screenshot resolutions**: Results from user resolution choices
+- **Global error**: Critical failure message if execution didn't complete
+
+#### Success Determination
+
+Story passes if:
+- All non-screenshot actions execute successfully
+- All screenshot comparisons match baseline OR user chose KEEP_NEW
+- No global errors occurred during execution
+
+## Integration Points
+
+### CLI Integration
+
+The runner is invoked by the CLI in several contexts:
+
+1. **Interactive mode**: User selects existing story → runner executes it
+2. **CI mode** (`--ci` flag): Runner executes all stories in batch
+3. **Single story mode**: Runner executes specific story by ID
+
+### Configuration Requirements
+
+Requires `.testing/config.yml` to exist with:
+
+```yaml
+lifecycle:
+  start:
+    - command: npm run dev
+      keepAlive: true
+      timeout: 30000
+  stop:
+    - command: pkill -f "npm run dev"
+```
+
+The runner:
+1. Loads config using config-loader
+2. Starts app using lifecycle-manager
+3. Executes story actions
+4. Stops app on completion
+
+### Story File Requirements
+
+Stories must follow the structure in `.testing/stories/{storyId}/story.yml`:
+
+```yaml
+id: story-id
+name: Story Name
+start:
+  url: http://localhost:3000
+  resolution:
+    width: 1920
+    height: 1080
+  pixelRatio: 1
+  deviceScaleFactor: 1
+actions:
+  - type: click
+    selector: "#button"
+  - type: input
+    selector: "#email"
+    value: "test@example.com"
+  - type: screenshot
+    name: "after-login"
+```
+
+## Dependencies Used
+
+### Approved Libraries
+
+- **Puppeteer**: Browser automation (headless mode for testing)
+- **Execa**: Process management for app lifecycle and VS Code launching
+- **Zod**: Config validation and type safety
+- **YAML**: Story file reading
+- **Chalk**: Terminal output coloring
+- **@inquirer/prompts**: Interactive CLI prompts for screenshot resolution
+
+### Screenshot Processing
+
+- **pixelmatch**: Pixel-by-pixel image comparison with configurable thresholds
+- **pngjs**: PNG image parsing and manipulation for comparison
+
+## File Structure
+
+```
+src/core/                      # Shared utilities
+├── constants.ts               # Project constants
+├── types.ts                   # TypeScript types
+├── config-loader.ts           # Config loading with Zod
+├── start-app.ts               # App startup lifecycle
+├── stop-app.ts                # App shutdown lifecycle
+└── utils/
+    └── execute-command.ts     # Command execution with Execa
+
+src/runner/                    # Runner module
+├── index.ts                   # Main orchestrator and execution flow
+├── browser-manager.ts         # Puppeteer browser launch (headless)
+├── action-executor.ts         # Action execution engine
+├── screenshot-comparator.ts   # Screenshot comparison using pixelmatch
+├── screenshot-resolver.ts     # Interactive merge resolution
+└── error-handler.ts           # Error diagnostics and screenshots
+```
+
+## Technical Details
+
+### Browser Configuration
+
+Launched with the following settings:
+
+- `headless: true` - No visible browser (unlike recorder)
+- `defaultViewport` from story.start.resolution (default 800x600)
+- `deviceScaleFactor` from story configuration
+- `pixelRatio` applied via setViewport if needed
+- `waitUntil: 'networkidle2'` for navigation actions
+
+### Screenshot Comparison Algorithm
+
+Uses pixelmatch with the following parameters:
+
+- **Pixel threshold**: 0.1 (fairly strict pixel-level sensitivity)
+- **Diff threshold**: 0.1% of total pixels (configurable)
+- **Comparison mode**: RGBA channel comparison
+- **Padding strategy**: Transparent pixels for dimension mismatches
+- **Output**: Number of different pixels + visual diff image
+
+### Resolution Prompt Format
+
+Interactive CLI prompt structure:
+
+```
+? Resolve screenshot mismatch: {name}
+  ❯ Keep old screenshot (fail test)
+    Keep the baseline screenshot and mark this test as failed
+
+    Accept new screenshot (update baseline)
+    Replace the baseline with the new screenshot
+```
+
+User navigates with arrow keys and presses Enter to confirm choice. The VS Code diff viewer remains open during selection for visual reference.
+
+### Error Screenshot Naming
+
+Diagnostic screenshots use timestamp-based naming:
+- Format: `error-{timestamp}.png`
+- Location: `.testing/temp/`
+- Type: Full-page PNG screenshots
+- Purpose: Debugging failed actions
+
+## Execution Flow
+
+### Story Execution Sequence
+
+```
+┌─────────────────────────────────────────┐
+│ 1. Load Configuration & Story           │
+└──────────────┬──────────────────────────┘
+               │
+┌──────────────▼──────────────────────────┐
+│ 2. Start Application (lifecycle)        │
+└──────────────┬──────────────────────────┘
+               │
+┌──────────────▼──────────────────────────┐
+│ 3. Launch Headless Browser              │
+└──────────────┬──────────────────────────┘
+               │
+┌──────────────▼──────────────────────────┐
+│ 4. Execute Actions Sequentially         │
+│    ├─ Non-screenshot: execute & capture │
+│    └─ Screenshot: compare & queue       │
+└──────────────┬──────────────────────────┘
+               │
+┌──────────────▼──────────────────────────┐
+│ 5. Resolve Screenshot Mismatches        │
+│    ├─ Launch VS Code diff viewer        │
+│    ├─ Show interactive prompt           │
+│    └─ Update baselines if KEEP_NEW      │
+└──────────────┬──────────────────────────┘
+               │
+┌──────────────▼──────────────────────────┐
+│ 6. Determine Final Pass/Fail            │
+│    ├─ All actions passed?               │
+│    └─ All mismatches accepted?          │
+└──────────────┬──────────────────────────┘
+               │
+┌──────────────▼──────────────────────────┐
+│ 7. Cleanup (Browser + Application)      │
+└─────────────────────────────────────────┘
+```
+
+### Error Handling Flow
+
+```
+Action Execution
+      │
+      ├─ Success ─────────────────► ActionResult (passed: true)
+      │
+      └─ Failure
+           │
+           ├─ 1. Capture full-page screenshot
+           ├─ 2. Save to .testing/temp/error-{timestamp}.png
+           ├─ 3. Create ErrorResult object
+           └─ 4. Continue with next action ► ActionResult (passed: false, error: ErrorResult)
+```
+
+### Screenshot Resolution Flow
+
+```
+Screenshot Action
+      │
+      ├─ Compare with baseline
+      │
+      ├─ Match ───────────────────► ActionResult (passed: true)
+      │
+      └─ Mismatch
+           │
+           ├─ Save new to .testing/temp/
+           ├─ Queue for resolution
+           └─ Continue with next action
+                 │
+After All Actions Complete
+      │
+      ├─ Launch VS Code diff viewer (non-blocking)
+      │    └─ code --diff oldPath newPath
+      │
+      ├─ Show interactive prompt (while VS Code open)
+      │    ├─ Option 1: Keep old screenshot (fail test)
+      │    └─ Option 2: Accept new screenshot (update baseline)
+      │
+      ├─ Wait for user selection or timeout
+      │
+      ├─ KEEP_NEW ──► Copy new over baseline ──► Result (choice: 'KEEP_NEW', updated: true)
+      │
+      └─ KEEP_OLD ──► Keep baseline unchanged ─► Result (choice: 'KEEP_OLD', updated: false)
+```
+
+## Usage
+
+### From CLI (Interactive Mode)
+
+```bash
+$0              # Interactive mode
+> Select existing story from list
+> Runner executes story
+> If mismatches, VS Code diff viewer opens with interactive prompt
+> Results displayed
+```
+
+### From CLI (CI Mode)
+
+```bash
+$0 --ci         # Run all stories
+> Runner executes each story sequentially
+> Screenshot mismatches cause failure (no interactive resolution)
+> Exit code 0 = all pass, 1 = any failure
+```
+
+### Programmatic Usage
+
+```typescript
+import { runStory } from './runner';
+
+const result = await runStory('my-story-id');
+
+if (result.success) {
+  console.log('✓ Story passed!');
+} else {
+  console.error('✗ Story failed');
+
+  // Show failed actions
+  result.actionResults
+    .filter(ar => !ar.passed)
+    .forEach(ar => {
+      console.error(`Action ${ar.index} (${ar.action.type}) failed`);
+      if (ar.error) {
+        console.error(`Error: ${ar.error.message}`);
+        console.error(`Screenshot: ${ar.error.screenshotPath}`);
+      }
+    });
+
+  // Show screenshot resolutions
+  result.screenshotResolutions.forEach(sr => {
+    console.log(`Screenshot ${sr.name}: ${sr.choice} (updated: ${sr.updated})`);
+  });
+}
+```
+
+## Code Principles
+
+### Naming and Structure
+
+- Use kebab-casing for all filenames
+- Function names should be explicit and self-documenting
+- Variable names should clearly indicate their purpose
+- Avoid unnecessary comments - code should be readable
+
+### Modularity
+
+- Each file handles a single responsibility
+- Components are loosely coupled
+- Communication happens through well-defined interfaces
+- Shared utilities extracted to src/core/
+
+### Simplicity
+
+- Implement only what's needed now
+- Don't over-engineer for future requirements
+- Keep complexity minimal
+- Refactoring happens when new features are added
+
+### Error Resilience
+
+- Continue execution after non-critical failures
+- Collect all errors for comprehensive reporting
+- Provide diagnostic information (screenshots, context)
+- Clean up resources in finally blocks
+
+## Differences from Recorder Module
+
+| Aspect | Recorder | Runner |
+|--------|----------|--------|
+| **Browser Mode** | Headed (visible) | Headless (invisible) |
+| **Purpose** | Capture user actions | Execute recorded actions |
+| **Screenshots** | User-triggered (snapshot button) | Automatic comparison at screenshot actions |
+| **User Interaction** | Required throughout | Only for mismatch resolution |
+| **Error Handling** | User sees errors visually | Diagnostic screenshots captured |
+| **Output** | Creates story.yml files | Produces execution results |
+| **UI Injection** | Recording panel with buttons | None (pure automation) |
+
+## Future Enhancements
+
+The following are NOT yet implemented:
+
+- Parallel story execution
+- HTML/JSON report generation
+- Custom assertion types beyond screenshots
+- Video recording of test execution
+- Network request interception and mocking
+- Browser console log capture
+- Performance metrics collection
+- Retry logic for flaky tests
+- Smart wait detection improvements
+- Automatic screenshot acceptance based on confidence scores
+
+## Known Limitations
+
+1. **Sequential execution only**: Stories run one at a time (no parallelization)
+2. **Screenshot resolution required**: CI mode fails on mismatches (no auto-accept)
+3. **Single browser context**: Each story runs in isolation (no state sharing)
+4. **Fixed timeout**: 30-second timeout not configurable per action
+5. **No iframe support**: Actions cannot target elements inside iframes
+6. **No shadow DOM**: Elements in shadow DOM cannot be selected
+7. **VS Code dependency**: Interactive resolution requires VS Code CLI for diff viewer (gracefully degrades if unavailable)
+8. **Full page error screenshots**: May be very large for long pages
+
+## Summary
+
+The runner module provides a complete test execution system that:
+
+- Executes recorded stories in headless browser
+- Handles all action types with comprehensive error handling
+- Compares screenshots pixel-by-pixel using pixelmatch
+- Provides interactive visual resolution using VS Code diff viewer
+- Captures diagnostic screenshots on failures
+- Manages application lifecycle automatically
+- Returns detailed execution results for reporting
+- Cleans up resources properly in all scenarios
+
+The implementation is production-ready and follows all architectural guidelines defined in the impulse-testing-architecture document. It works seamlessly with stories created by the recorder module and provides a robust foundation for automated testing workflows.

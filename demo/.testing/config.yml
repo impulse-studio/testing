@@ -9,7 +9,7 @@ lifecycle:
       timeout: 10000
 
 screenshots:
-  diffThreshold: 20 # number of pixels to ignore when comparing screenshots
+  diffThreshold: 0 # percentage of pixels that can differ (0-100).
 
 output:
   console: true
