@@ -1,0 +1,308 @@
+---
+alwaysApply: false
+description: Interactive configuration onboarding system with auto-detection of project types (Docker, pnpm, npm, Bun, Yarn) and smart command suggestions for lifecycle management
+---
+# Config Onboarding Implementation
+
+## Overview
+
+The configuration onboarding system provides an interactive CLI flow for initializing and managing the testing framework's configuration. It includes auto-detection of project types and smart command suggestions.
+
+## Module Status
+
+✅ **FULLY IMPLEMENTED**
+
+## Architecture
+
+The config onboarding consists of several components:
+
+### Core Components
+
+- **check-config.ts**: Validates config existence and shows helpful warnings
+- **init-config.ts**: Creates default config.yml and .gitignore
+- **onboarding.ts**: Main interactive configuration menu
+- **manage-commands.ts**: Command list management with CRUD operations
+- **edit-command.ts**: Single command creation/editing interface
+
+### Auto-Detection System
+
+Located in `src/cli/config/detectors/`, the detection system identifies project types and suggests appropriate commands:
+
+- **docker-compose.ts**: Detects Docker Compose files
+- **pnpm.ts**: Detects pnpm projects and reads package.json scripts
+- **npm.ts**: Detects npm projects (excluding pnpm)
+- **bun.ts**: Detects Bun projects
+- **yarn.ts**: Detects Yarn projects (excluding pnpm/npm)
+- **index.ts**: Orchestrates all detectors in priority order
+
+## CLI Commands
+
+Two command options launch the config onboarding:
+
+- `--init`: Primary configuration command
+- `--config`: Alias for `--init`
+
+Both commands:
+1. Create `.testing/` directory if needed
+2. Create default `config.yml` with empty lifecycle commands
+3. Create `.testing/.gitignore` with `temp/` entry
+4. Launch interactive onboarding
+
+## Config Check Integration
+
+The config check is integrated into:
+
+- **Recorder** (`src/recorder/index.ts:23-27`): Checks before recording
+- **Runner** (`src/runner/index.ts:194-204`): Checks before running stories
+
+If config doesn't exist:
+- Recorder exits with code 1 and shows warning
+- Runner returns error result with helpful message
+
+## Onboarding Flow
+
+### Main Menu
+
+Interactive select with options:
+- Start Commands (with count badge)
+- Stop Commands (with count badge)
+- Screenshot Settings (disabled/future)
+- Save and Exit
+
+### Command Management
+
+When managing commands:
+1. Show list of existing commands
+2. Each command is selectable to edit/delete
+3. "Add new command" option below list
+4. "Back to main menu" at bottom
+
+### Auto-Detection
+
+On first command add:
+1. Runs all detectors in priority order
+2. Combines results (Docker + package manager if both exist)
+3. Pre-fills command input with detected value
+4. User can edit before confirming
+
+### Command Editing
+
+Prompts for:
+- **Command**: Shell command string
+- **Keep Alive**: Boolean (runs indefinitely if true)
+- **Timeout**: Number (only if keepAlive is false)
+
+Validates using Zod schema from `src/core/schemas/lifecycle-command-schema.ts`
+
+## Auto-Detection Priority
+
+1. **Docker Compose** (checked first, can combine with package manager)
+2. **Package Managers** (only one matches):
+   - pnpm (highest priority)
+   - Bun
+   - npm
+   - Yarn (lowest priority)
+
+## Detection Logic
+
+### Docker Compose
+
+Checks for files:
+- `docker-compose.yml`
+- `docker-compose.yaml`
+- `compose.yml`
+- `compose.yaml`
+
+Suggests:
+- Start: `docker compose up` (keepAlive: true)
+- Stop: `docker compose down`
+
+### Package Managers
+
+Checks for lock files, then reads `package.json` scripts:
+- Priority: `dev` → `start` → `serve`
+- Falls back to `dev` if no scripts found
+
+**pnpm** (`pnpm-lock.yaml`):
+- Start: `pnpm {script}` (keepAlive: true)
+- Stop: `pkill -f "pnpm {script}"`
+
+**npm** (`package-lock.json`, no pnpm):
+- Start: `npm run {script}` (keepAlive: true)
+- Stop: `pkill -f "npm run {script}"`
+
+**Bun** (`bun.lockb`):
+- Start: `bun {script}` (keepAlive: true)
+- Stop: `pkill -f "bun {script}"`
+
+**Yarn** (`yarn.lock`, no pnpm/npm):
+- Start: `yarn {script}` (keepAlive: true)
+- Stop: `pkill -f "yarn {script}"`
+
+## File Structure
+
+```
+src/cli/config/
+├── check-config.ts           # Config existence validation
+├── init-config.ts            # Default config initialization
+├── onboarding.ts             # Main interactive menu
+├── manage-commands.ts        # Command CRUD operations
+├── edit-command.ts           # Single command editor
+└── detectors/                # Auto-detection modules
+    ├── index.ts              # Detector orchestrator
+    ├── docker-compose.ts
+    ├── pnpm.ts
+    ├── npm.ts
+    ├── bun.ts
+    └── yarn.ts
+
+src/cli/callbacks/config-onboarding/
+└── handler.ts                # CLI callback for --init/--config
+```
+
+## Default Config Structure
+
+When initialized, creates:
+
+```yaml
+lifecycle:
+  start: []
+  stop: []
+screenshots:
+  diffThreshold: 0
+```
+
+And `.testing/.gitignore`:
+```
+temp/
+```
+
+## Dependencies Used
+
+- **@inquirer/prompts**: Interactive CLI (select, input, confirm)
+- **chalk**: Terminal output coloring
+- **zod**: Command validation
+- **yaml**: Config file operations
+- **fs/promises**: File system operations
+
+## Integration Points
+
+### CLI Integration
+
+The config onboarding is invoked by:
+1. `--init` or `--config` flags in CLI
+2. Automatic warning when config missing (recorder/runner)
+
+### Config Schema
+
+Uses existing schemas:
+- `config-schema.ts`: Full config validation
+- `lifecycle-command-schema.ts`: Individual command validation
+
+### YAML Operations
+
+Uses existing utilities:
+- `readYamlFile()`: Load config
+- `writeYamlFile()`: Save config
+
+## Error Handling
+
+- Config check doesn't throw, returns boolean with helpful messages
+- Auto-detection fails gracefully, returns empty arrays
+- Command validation uses Zod with clear error messages
+- File operations wrapped in try-catch with informative errors
+
+## User Experience
+
+### Visual Feedback
+
+- Color-coded messages (chalk)
+- Command counts in badges
+- Dimmed secondary info
+- Clear action indicators
+
+### Interaction Patterns
+
+- Arrow key navigation
+- Enter to select
+- Input validation with defaults
+- Confirmation on delete
+- Auto-save after changes
+
+## Code Conventions
+
+- Kebab-casing for all filenames
+- Named exports only
+- One primary function per file
+- Extensionless imports for local files
+- Type-safe operations with TypeScript
+
+## Usage Examples
+
+### Initialize Config
+
+```bash
+# Run config setup
+npx impulse-testing --init
+
+# Or use alias
+npx impulse-testing --config
+```
+
+### Auto-Detection Scenarios
+
+**pnpm + Docker Compose Project:**
+```yaml
+lifecycle:
+  start:
+    - command: docker compose up
+      keepAlive: true
+    - command: pnpm dev
+      keepAlive: true
+  stop:
+    - command: docker compose down
+    - command: pkill -f "pnpm dev"
+```
+
+**npm-only Project:**
+```yaml
+lifecycle:
+  start:
+    - command: npm run dev
+      keepAlive: true
+  stop:
+    - command: pkill -f "npm run dev"
+```
+
+## Future Enhancements
+
+The following are NOT yet implemented:
+
+- Screenshot settings configuration (threshold editing)
+- Command reordering (drag-and-drop)
+- Command grouping
+- Environment variable configuration
+- Database lifecycle commands
+- Custom detector plugins
+
+## Known Limitations
+
+1. **Script detection** only checks `dev`, `start`, `serve` scripts
+2. **Package manager detection** based on lock files only
+3. **Stop commands** use `pkill` which may not work on all systems
+4. **No Windows support** for process management commands
+5. **Cannot detect** custom startup scripts outside package.json
+
+## Summary
+
+The config onboarding system provides:
+
+- Interactive configuration setup
+- Smart project type detection
+- Auto-suggested commands based on project structure
+- Easy command management (add/edit/delete)
+- Seamless integration with recorder/runner
+- Non-blocking validation with helpful messages
+- Auto-save functionality
+
+The implementation follows all architectural guidelines and integrates cleanly with the existing CLI structure.
