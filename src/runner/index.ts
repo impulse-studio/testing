@@ -1,16 +1,20 @@
-import type { Page } from 'puppeteer';
-import { join } from 'node:path';
-import { loadConfig } from '@/core/config-loader';
-import { loadStory } from '@/recorder/story-updater';
-import { startApp } from '@/core/start-app';
-import { stopApp } from '@/core/stop-app';
-import { SCREENSHOTS_DIR } from '@/core/constants';
-import type { Action, ScreenshotAction } from '@/core/types';
-import { launchBrowser, type BrowserInstance } from './browser-manager.js';
-import { executeAction } from './action-executor.js';
-import { compareScreenshot, type ComparisonResult } from './screenshot-comparator.js';
-import { resolveScreenshots, type ScreenshotMismatch, type ResolutionResult } from './screenshot-resolver.js';
-import { captureErrorScreenshot, type ErrorResult } from './error-handler.js';
+import { join } from "node:path";
+import type { Page } from "puppeteer";
+import { loadConfig } from "@/core/config-loader";
+import { SCREENSHOTS_DIR } from "@/core/constants";
+import { startApp } from "@/core/start-app";
+import { stopApp } from "@/core/stop-app";
+import type { Action, ScreenshotAction } from "@/core/types";
+import { loadStory } from "@/recorder/story-updater";
+import { executeAction } from "./action-executor.js";
+import { type BrowserInstance, launchBrowser } from "./browser-manager.js";
+import { captureErrorScreenshot, type ErrorResult } from "./error-handler.js";
+import { type ComparisonResult, compareScreenshot } from "./screenshot-comparator.js";
+import {
+  type ResolutionResult,
+  resolveScreenshots,
+  type ScreenshotMismatch,
+} from "./screenshot-resolver.js";
 
 /**
  * Result of executing a single action
@@ -76,7 +80,7 @@ async function executeNonScreenshotAction(
   } catch (error) {
     // Capture diagnostic screenshot on error
     const errorMessage = error instanceof Error ? error.message : String(error);
-    const selector = 'selector' in action ? action.selector : undefined;
+    const selector = "selector" in action ? action.selector : undefined;
 
     const errorResult = await captureErrorScreenshot(page, {
       actionType: action.type,
@@ -183,7 +187,10 @@ export interface RunStoryOptions {
  * }
  * ```
  */
-export async function runStory(storyId: string, options: RunStoryOptions = {}): Promise<ExecutionResult> {
+export async function runStory(
+  storyId: string,
+  options: RunStoryOptions = {},
+): Promise<ExecutionResult> {
   let browserInstance: BrowserInstance | null = null;
   let cleanup: (() => Promise<void>) | null = null;
   const actionResults: ActionResult[] = [];
@@ -210,7 +217,7 @@ export async function runStory(storyId: string, options: RunStoryOptions = {}): 
       // Type guard: ensure action exists (it should always exist when i < length)
       if (!action) continue;
 
-      if (action.type === 'screenshot') {
+      if (action.type === "screenshot") {
         // Handle screenshot action with comparison
         const result = await executeScreenshotAction(
           page,
@@ -223,11 +230,7 @@ export async function runStory(storyId: string, options: RunStoryOptions = {}): 
 
         // If screenshot mismatch, queue for later resolution
         if (!result.passed && result.comparisonResult?.newScreenshotPath) {
-          const baselinePath = join(
-            SCREENSHOTS_DIR,
-            storyId,
-            action.name,
-          );
+          const baselinePath = join(SCREENSHOTS_DIR, storyId, action.name);
 
           screenshotMismatches.push({
             name: action.name,
@@ -248,13 +251,11 @@ export async function runStory(storyId: string, options: RunStoryOptions = {}): 
     // 6. Resolve screenshot mismatches if any exist
     let screenshotResolutions: ScreenshotResolutionResult[] = [];
     if (screenshotMismatches.length > 0) {
-      const resolverOptions = options.ciMode !== undefined
-        ? { ciMode: options.ciMode }
-        : {};
+      const resolverOptions = options.ciMode !== undefined ? { ciMode: options.ciMode } : {};
       const resolutionResults = await resolveScreenshots(screenshotMismatches, resolverOptions);
       screenshotResolutions = resolutionResults.map((result: ResolutionResult) => ({
         name: result.name,
-        accepted: result.choice === 'KEEP_NEW',
+        accepted: result.choice === "KEEP_NEW",
       }));
     }
 
@@ -262,13 +263,13 @@ export async function runStory(storyId: string, options: RunStoryOptions = {}): 
     // - All non-screenshot actions must pass
     // - All screenshot mismatches must be accepted (KEEP_NEW)
     const allActionsPass = actionResults.every((result) => {
-      if (result.action.type === 'screenshot') {
+      if (result.action.type === "screenshot") {
         // For screenshots, check if it was resolved as KEEP_NEW
         const resolution = screenshotResolutions.find(
           (r) => r.name === (result.action as ScreenshotAction).name,
         );
         // Passed if: (1) originally matched, or (2) was resolved and accepted
-        return result.passed || (resolution !== undefined && resolution.accepted);
+        return result.passed || resolution?.accepted;
       }
       // For non-screenshot actions, just check if it passed
       return result.passed;
@@ -300,7 +301,7 @@ export async function runStory(storyId: string, options: RunStoryOptions = {}): 
       try {
         await browserInstance.browser.close();
       } catch (error) {
-        console.error('Failed to close browser:', error);
+        console.error("Failed to close browser:", error);
       }
     }
 
@@ -310,7 +311,7 @@ export async function runStory(storyId: string, options: RunStoryOptions = {}): 
         const config = await loadConfig();
         await stopApp(cleanup, config);
       } catch (error) {
-        console.error('Failed to stop application:', error);
+        console.error("Failed to stop application:", error);
       }
     }
   }

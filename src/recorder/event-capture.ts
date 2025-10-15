@@ -1,11 +1,11 @@
-import type { Page } from 'puppeteer';
-import type { Action } from '@/core/types';
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import type { Page } from "puppeteer";
+import type { Action } from "@/core/types";
 
 interface CapturedEvent {
-  type: 'click' | 'input' | 'change' | 'navigate';
+  type: "click" | "input" | "change" | "navigate";
   selector?: string;
   value?: string;
   inputType?: string;
@@ -20,7 +20,7 @@ interface CapturedEvent {
 const getBrowserSideCode = (): string => {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
-  return readFileSync(join(__dirname, 'injected', 'event-capture-client.js'), 'utf-8');
+  return readFileSync(join(__dirname, "injected", "event-capture-client.js"), "utf-8");
 };
 
 /**
@@ -30,7 +30,7 @@ export class EventCapture {
   private page: Page;
   private pendingActions: Action[] = [];
   private inputTracking = new Map<string, string>();
-  private lastUrl = '';
+  private lastUrl = "";
 
   constructor(page: Page) {
     this.page = page;
@@ -44,12 +44,9 @@ export class EventCapture {
     this.lastUrl = this.page.url();
 
     // Expose function to receive events from page context
-    await this.page.exposeFunction(
-      '__impulse_captureEvent',
-      (event: CapturedEvent) => {
-        this.handleEvent(event);
-      }
-    );
+    await this.page.exposeFunction("__impulse_captureEvent", (event: CapturedEvent) => {
+      this.handleEvent(event);
+    });
 
     // Inject event listeners into page context using evaluateOnNewDocument
     // This ensures listeners are added to all pages including after navigation
@@ -60,12 +57,12 @@ export class EventCapture {
     await this.injectListeners();
 
     // Set up navigation tracking
-    this.page.on('framenavigated', async (frame) => {
+    this.page.on("framenavigated", async (frame) => {
       if (frame === this.page.mainFrame()) {
         const newUrl = this.page.url();
         if (newUrl !== this.lastUrl) {
           this.pendingActions.push({
-            type: 'navigate',
+            type: "navigate",
             url: newUrl,
           });
           this.lastUrl = newUrl;
@@ -90,46 +87,46 @@ export class EventCapture {
    */
   private handleEvent(event: CapturedEvent): void {
     switch (event.type) {
-      case 'click':
+      case "click":
         if (event.selector) {
           this.pendingActions.push({
-            type: 'click',
+            type: "click",
             selector: event.selector,
           });
         }
         break;
 
-      case 'input':
+      case "input":
         if (event.selector && event.value !== undefined) {
           // Update input tracking map
           this.inputTracking.set(event.selector, event.value);
         }
         break;
 
-      case 'change':
+      case "change":
         if (event.selector) {
-          if (event.inputType === 'select' && event.value !== undefined) {
+          if (event.inputType === "select" && event.value !== undefined) {
             this.pendingActions.push({
-              type: 'select',
+              type: "select",
               selector: event.selector,
               value: event.value,
             });
           } else if (
-            (event.inputType === 'checkbox' || event.inputType === 'radio') &&
+            (event.inputType === "checkbox" || event.inputType === "radio") &&
             event.checked !== undefined
           ) {
             this.pendingActions.push({
-              type: event.checked ? 'check' : 'uncheck',
+              type: event.checked ? "check" : "uncheck",
               selector: event.selector,
             });
           }
         }
         break;
 
-      case 'navigate':
+      case "navigate":
         if (event.url) {
           this.pendingActions.push({
-            type: 'navigate',
+            type: "navigate",
             url: event.url,
           });
         }
@@ -149,7 +146,7 @@ export class EventCapture {
 
     // Add screenshot action
     this.pendingActions.push({
-      type: 'screenshot',
+      type: "screenshot",
       name: screenshotName,
     });
 
@@ -175,7 +172,7 @@ export class EventCapture {
   private flushInputTracking(): void {
     this.inputTracking.forEach((value, selector) => {
       this.pendingActions.push({
-        type: 'input',
+        type: "input",
         selector,
         value,
       });

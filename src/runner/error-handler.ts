@@ -1,7 +1,7 @@
-import type { Page } from 'puppeteer';
-import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { TESTING_DIR } from '@/core/constants';
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import type { Page } from "puppeteer";
+import { TESTING_DIR } from "@/core/constants";
 
 /**
  * Structured error result containing diagnostic information
@@ -66,13 +66,13 @@ export async function captureErrorScreenshot(
   const timestampForFilename = Date.now();
 
   // Ensure the temp directory exists
-  const tempDir = join(TESTING_DIR, 'temp');
+  const tempDir = join(TESTING_DIR, "temp");
   await mkdir(tempDir, { recursive: true });
 
   // Take a full-page screenshot to capture the entire error state
   const screenshot = await page.screenshot({
     fullPage: true,
-    type: 'png',
+    type: "png",
   });
 
   // Save the screenshot with a timestamp

@@ -1,7 +1,7 @@
 // Configuration types (inferred from Zod schemas)
 
-export type { LifecycleCommand } from './schemas/lifecycle-command-schema.js';
-export type { Config } from './schemas/config-schema.js';
+export type { Config } from "./schemas/config-schema.js";
+export type { LifecycleCommand } from "./schemas/lifecycle-command-schema.js";
 
 // Story types (manually defined)
 
@@ -20,34 +20,34 @@ export interface BaseAction {
 }
 
 export interface ClickAction extends BaseAction {
-  type: 'click';
+  type: "click";
   selector: string;
 }
 
 export interface InputAction extends BaseAction {
-  type: 'input';
+  type: "input";
   selector: string;
   value: string;
 }
 
 export interface SelectAction extends BaseAction {
-  type: 'select';
+  type: "select";
   selector: string;
   value: string;
 }
 
 export interface CheckAction extends BaseAction {
-  type: 'check' | 'uncheck';
+  type: "check" | "uncheck";
   selector: string;
 }
 
 export interface NavigateAction extends BaseAction {
-  type: 'navigate';
+  type: "navigate";
   url: string;
 }
 
 export interface ScreenshotAction extends BaseAction {
-  type: 'screenshot';
+  type: "screenshot";
   name: string;
 }
 

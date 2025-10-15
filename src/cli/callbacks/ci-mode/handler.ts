@@ -1,30 +1,31 @@
-import chalk from 'chalk';
-import { runStory, type ExecutionResult, type ActionResult } from '@/runner';
-import type { Action } from '@/core/types';
-import { listStories } from '@/cli/list-stories';
+import chalk from "chalk";
+import { listStories } from "@/cli/list-stories";
+import type { Action } from "@/core/types";
+import { type ActionResult, type ExecutionResult, runStory } from "@/runner";
 
 /**
  * Format an action for display with its details
  */
 function formatAction(action: Action): string {
   switch (action.type) {
-    case 'click':
+    case "click":
       return `click ${chalk.gray(action.selector)}`;
-    case 'input':
+    case "input":
       return `input ${chalk.gray(action.selector)} ${chalk.gray(`(${action.value})`)}`;
-    case 'select':
+    case "select":
       return `select ${chalk.gray(action.selector)} ${chalk.gray(`(${action.value})`)}`;
-    case 'check':
-    case 'uncheck':
+    case "check":
+    case "uncheck":
       return `${action.type} ${chalk.gray(action.selector)}`;
-    case 'navigate':
+    case "navigate":
       return `navigate ${chalk.gray(action.url)}`;
-    case 'screenshot':
+    case "screenshot":
       return `screenshot ${chalk.gray(action.name)}`;
-    default:
+    default: {
       // This should never happen if all action types are handled
       const exhaustiveCheck: never = action;
       return String((exhaustiveCheck as Action).type);
+    }
   }
 }
 
@@ -36,18 +37,18 @@ function displayActionResult(result: ActionResult): void {
 
   if (result.passed) {
     // Action passed
-    console.log(`   ${chalk.green('✓')} ${actionDisplay}`);
-  } else if (result.action.type === 'screenshot' && result.comparisonResult) {
+    console.log(`   ${chalk.green("✓")} ${actionDisplay}`);
+  } else if (result.action.type === "screenshot" && result.comparisonResult) {
     // Screenshot mismatch - in CI mode, these are always failed
-    console.log(`   ${chalk.red('✗')} ${actionDisplay} ${chalk.red('(screenshot mismatch)')}`);
+    console.log(`   ${chalk.red("✗")} ${actionDisplay} ${chalk.red("(screenshot mismatch)")}`);
   } else {
     // Action failed
-    console.log(`   ${chalk.red('✗')} ${actionDisplay}`);
+    console.log(`   ${chalk.red("✗")} ${actionDisplay}`);
 
     if (result.error) {
-      console.log(`      ${chalk.red('Error:')} ${result.error.message}`);
+      console.log(`      ${chalk.red("Error:")} ${result.error.message}`);
       if (result.error.screenshotPath) {
-        console.log(`      ${chalk.gray('Screenshot:')} ${result.error.screenshotPath}`);
+        console.log(`      ${chalk.gray("Screenshot:")} ${result.error.screenshotPath}`);
       }
     }
   }
@@ -83,19 +84,19 @@ function displayStoryResult(result: ExecutionResult): void {
  * Display summary of all story executions
  */
 function displaySummary(results: ExecutionResult[]): void {
-  const passedCount = results.filter(r => r.success).length;
-  const failedCount = results.filter(r => !r.success).length;
+  const passedCount = results.filter((r) => r.success).length;
+  const failedCount = results.filter((r) => !r.success).length;
 
-  console.log(chalk.bold('\n📊 CI Summary\n'));
+  console.log(chalk.bold("\n📊 CI Summary\n"));
   console.log(`   Total: ${results.length}`);
-  console.log(`   ${chalk.green('Passed:')} ${passedCount}`);
-  console.log(`   ${chalk.red('Failed:')} ${failedCount}`);
+  console.log(`   ${chalk.green("Passed:")} ${passedCount}`);
+  console.log(`   ${chalk.red("Failed:")} ${failedCount}`);
   console.log();
 
   if (failedCount > 0) {
-    console.log(chalk.red('❌ Some stories failed. See details above.'));
+    console.log(chalk.red("❌ Some stories failed. See details above."));
   } else {
-    console.log(chalk.green('✅ All stories passed!'));
+    console.log(chalk.green("✅ All stories passed!"));
   }
   console.log();
 }
@@ -115,7 +116,7 @@ function displaySummary(results: ExecutionResult[]): void {
  * @returns Promise that resolves when all stories complete
  */
 export async function handleCIMode(storyIds: string[]): Promise<void> {
-  console.log(chalk.bold.blue('\n🤖 Running in CI Mode\n'));
+  console.log(chalk.bold.blue("\n🤖 Running in CI Mode\n"));
 
   // Determine which stories to run
   let storiesToRun: string[];
@@ -124,21 +125,25 @@ export async function handleCIMode(storyIds: string[]): Promise<void> {
     // Run specified stories
     storiesToRun = storyIds;
     console.log(chalk.blue(`Running ${storiesToRun.length} specified story/stories:`));
-    storiesToRun.forEach(id => console.log(`   - ${id}`));
+    storiesToRun.forEach((id) => {
+      console.log(`   - ${id}`);
+    });
     console.log();
   } else {
     // Run all available stories
     const allStories = await listStories();
 
     if (allStories.length === 0) {
-      console.log(chalk.yellow('⚠ No stories found. Nothing to run.'));
+      console.log(chalk.yellow("⚠ No stories found. Nothing to run."));
       console.log();
       process.exit(0);
     }
 
-    storiesToRun = allStories.map(s => s.id);
+    storiesToRun = allStories.map((s) => s.id);
     console.log(chalk.blue(`Running all ${storiesToRun.length} available stories:`));
-    storiesToRun.forEach(id => console.log(`   - ${id}`));
+    storiesToRun.forEach((id) => {
+      console.log(`   - ${id}`);
+    });
     console.log();
   }
 
@@ -173,7 +178,7 @@ export async function handleCIMode(storyIds: string[]): Promise<void> {
   displaySummary(results);
 
   // Exit with appropriate code
-  const hasFailures = results.some(r => !r.success);
+  const hasFailures = results.some((r) => !r.success);
   if (hasFailures) {
     process.exit(1);
   }

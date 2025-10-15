@@ -1,5 +1,5 @@
-import puppeteer, { type Browser, type Page } from 'puppeteer';
-import type { Story } from '@/core/types';
+import puppeteer, { type Browser, type Page } from "puppeteer";
+import type { Story } from "@/core/types";
 
 export interface BrowserInstance {
   browser: Browser;
@@ -25,7 +25,9 @@ export async function launchBrowser(story: Story): Promise<BrowserInstance> {
       },
     });
   } catch (launchError) {
-    throw new Error(`Failed to launch Chrome browser: ${launchError instanceof Error ? launchError.message : String(launchError)}`);
+    throw new Error(
+      `Failed to launch Chrome browser: ${launchError instanceof Error ? launchError.message : String(launchError)}`,
+    );
   }
 
   const page = await browser.newPage();
@@ -41,7 +43,7 @@ export async function launchBrowser(story: Story): Promise<BrowserInstance> {
 
   // Navigate to the starting URL
   await page.goto(story.start.url, {
-    waitUntil: 'networkidle2',
+    waitUntil: "networkidle2",
   });
 
   return { browser, page };

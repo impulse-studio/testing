@@ -1,7 +1,7 @@
-import { readYamlFile, writeYamlFile } from '@/cli/utils/yaml-helper';
-import { join } from 'node:path';
-import { STORIES_DIR, STORY_FILE } from '@/core/constants';
-import type { Story, Action } from '@/core/types';
+import { join } from "node:path";
+import { readYamlFile, writeYamlFile } from "@/cli/utils/yaml-helper";
+import { STORIES_DIR, STORY_FILE } from "@/core/constants";
+import type { Action, Story } from "@/core/types";
 
 /**
  * Load a story from its story.yml file
@@ -19,10 +19,7 @@ export async function loadStory(storyId: string): Promise<Story> {
  * @param storyId - Story identifier
  * @param actions - Array of actions to append
  */
-export async function appendActions(
-  storyId: string,
-  actions: Action[]
-): Promise<void> {
+export async function appendActions(storyId: string, actions: Action[]): Promise<void> {
   // Load existing story
   const story = await loadStory(storyId);
 

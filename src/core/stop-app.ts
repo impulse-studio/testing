@@ -1,15 +1,12 @@
-import { executeCommand } from './utils/execute-command.js';
-import type { Config } from './types.js';
+import type { Config } from "./types.js";
+import { executeCommand } from "./utils/execute-command.js";
 
 /**
  * Stop the application by executing cleanup function and lifecycle.stop commands
  * @param cleanup The cleanup function returned by startApp
  * @param config The validated configuration object
  */
-export async function stopApp(
-  cleanup: () => Promise<void>,
-  config: Config
-): Promise<void> {
+export async function stopApp(cleanup: () => Promise<void>, config: Config): Promise<void> {
   // First, execute the cleanup function to stop running processes
   await cleanup();
 

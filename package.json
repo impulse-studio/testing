@@ -12,8 +12,8 @@
     "build": "tsc",
     "dev": "sh -c 'cd demo && tsx --tsconfig=../tsconfig.json ../src/cli/index.ts \"$@\" && cd ..' -- ",
     "start": "node dist/cli/index.js",
-    "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist .next"
+    "format": "biome format --write src/",
+    "checks": "tsc --noEmit && biome check src/"
   },
   "keywords": [
     "e2e",
@@ -28,6 +28,7 @@
   },
   "packageManager": "pnpm@10.15.0",
   "devDependencies": {
+    "@biomejs/biome": "^2.2.6",
     "@types/node": "^24.7.2",
     "@types/pixelmatch": "^5.2.6",
     "@types/pngjs": "^6.0.5",

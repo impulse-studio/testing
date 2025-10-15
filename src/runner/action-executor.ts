@@ -1,5 +1,5 @@
-import type { Page } from 'puppeteer';
-import type { Action } from '@/core/types';
+import type { Page } from "puppeteer";
+import type { Action } from "@/core/types";
 
 /**
  * Default timeout for waiting for selectors (in milliseconds)
@@ -38,7 +38,7 @@ const DEFAULT_TIMEOUT = 30000; // 30 seconds
 export async function executeAction(page: Page, action: Action): Promise<void> {
   try {
     switch (action.type) {
-      case 'click': {
+      case "click": {
         // Wait for the element to be present in the DOM
         await page.waitForSelector(action.selector, {
           timeout: DEFAULT_TIMEOUT,
@@ -50,7 +50,7 @@ export async function executeAction(page: Page, action: Action): Promise<void> {
         break;
       }
 
-      case 'input': {
+      case "input": {
         // Wait for the input element to be present
         await page.waitForSelector(action.selector, {
           timeout: DEFAULT_TIMEOUT,
@@ -60,14 +60,14 @@ export async function executeAction(page: Page, action: Action): Promise<void> {
         // Clear the existing value using triple-click + delete approach
         // This is more reliable than page.evaluate for various input types
         await page.click(action.selector, { clickCount: 3 });
-        await page.keyboard.press('Backspace');
+        await page.keyboard.press("Backspace");
 
         // Type the new value
         await page.type(action.selector, action.value);
         break;
       }
 
-      case 'select': {
+      case "select": {
         // Wait for the select element to be present
         await page.waitForSelector(action.selector, {
           timeout: DEFAULT_TIMEOUT,
@@ -79,9 +79,9 @@ export async function executeAction(page: Page, action: Action): Promise<void> {
         break;
       }
 
-      case 'check':
-      case 'uncheck': {
-        const desiredState = action.type === 'check';
+      case "check":
+      case "uncheck": {
+        const desiredState = action.type === "check";
 
         // Wait for the checkbox/radio element to be present
         await page.waitForSelector(action.selector, {
@@ -103,22 +103,20 @@ export async function executeAction(page: Page, action: Action): Promise<void> {
         break;
       }
 
-      case 'navigate': {
+      case "navigate": {
         // Navigate to the specified URL
         // Wait until network is idle to ensure page is fully loaded
         await page.goto(action.url, {
-          waitUntil: 'networkidle2',
+          waitUntil: "networkidle2",
           timeout: DEFAULT_TIMEOUT,
         });
         break;
       }
 
-      case 'screenshot': {
+      case "screenshot": {
         // Screenshot actions are handled externally by the runner
         // This should not be called directly through executeAction
-        throw new Error(
-          'Screenshot actions should be handled by the runner, not by executeAction',
-        );
+        throw new Error("Screenshot actions should be handled by the runner, not by executeAction");
       }
 
       default: {
@@ -129,33 +127,27 @@ export async function executeAction(page: Page, action: Action): Promise<void> {
     }
   } catch (error) {
     // Create a descriptive error message with context
-    const errorMessage =
-      error instanceof Error ? error.message : String(error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
 
     // Extract selector if available
-    const selector =
-      'selector' in action ? action.selector : undefined;
+    const selector = "selector" in action ? action.selector : undefined;
 
     // Build error context string
-    const contextParts: string[] = [
-      `Action type: ${action.type}`,
-    ];
+    const contextParts: string[] = [`Action type: ${action.type}`];
 
     if (selector) {
       contextParts.push(`Selector: ${selector}`);
     }
 
-    if (action.type === 'navigate') {
+    if (action.type === "navigate") {
       contextParts.push(`URL: ${action.url}`);
     }
 
-    if (action.type === 'input' || action.type === 'select') {
+    if (action.type === "input" || action.type === "select") {
       contextParts.push(`Value: ${action.value}`);
     }
 
     // Throw a new error with full context
-    throw new Error(
-      `Failed to execute action: ${errorMessage}\n${contextParts.join('\n')}`,
-    );
+    throw new Error(`Failed to execute action: ${errorMessage}\n${contextParts.join("\n")}`);
   }
 }

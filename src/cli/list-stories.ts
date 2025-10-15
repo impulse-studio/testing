@@ -1,6 +1,6 @@
-import { readdir, stat } from 'node:fs/promises';
-import { join } from 'node:path';
-import { readYamlFile } from './utils/yaml-helper.js';
+import { readdir, stat } from "node:fs/promises";
+import { join } from "node:path";
+import { readYamlFile } from "./utils/yaml-helper.js";
 
 interface StoryMetadata {
   id: string;
@@ -9,7 +9,7 @@ interface StoryMetadata {
 }
 
 export async function listStories(): Promise<StoryMetadata[]> {
-  const storiesDir = join(process.cwd(), '.testing', 'stories');
+  const storiesDir = join(process.cwd(), ".testing", "stories");
 
   try {
     const entries = await readdir(storiesDir);
@@ -17,7 +17,7 @@ export async function listStories(): Promise<StoryMetadata[]> {
 
     for (const entry of entries) {
       const storyPath = join(storiesDir, entry);
-      const storyFilePath = join(storyPath, 'story.yml');
+      const storyFilePath = join(storyPath, "story.yml");
 
       try {
         const stats = await stat(storyPath);
@@ -30,9 +30,7 @@ export async function listStories(): Promise<StoryMetadata[]> {
           name: storyData.name,
           path: storyPath,
         });
-      } catch {
-        continue;
-      }
+      } catch {}
     }
 
     return stories;
@@ -40,4 +38,3 @@ export async function listStories(): Promise<StoryMetadata[]> {
     return [];
   }
 }
-

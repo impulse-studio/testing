@@ -1,5 +1,5 @@
-import { z } from 'zod';
-import { lifecycleCommandSchema } from './lifecycle-command-schema.js';
+import { z } from "zod";
+import { lifecycleCommandSchema } from "./lifecycle-command-schema.js";
 
 export const configSchema = z.object({
   lifecycle: z.object({

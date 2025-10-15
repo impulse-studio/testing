@@ -1,13 +1,13 @@
-import chalk from 'chalk';
-import { loadConfig } from '@/core/config-loader';
-import { startApp } from '@/core/start-app';
-import { stopApp } from '@/core/stop-app';
-import { loadStory, appendActions } from './story-updater.js';
-import { launchBrowser, type BrowserInstance } from './browser-manager.js';
-import { EventCapture } from './event-capture.js';
-import { injectRecordingUI, removeRecordingUI } from './recording-ui.js';
-import { takeScreenshot } from './screenshot-manager.js';
-import type { Config } from '@/core/types';
+import chalk from "chalk";
+import { loadConfig } from "@/core/config-loader";
+import { startApp } from "@/core/start-app";
+import { stopApp } from "@/core/stop-app";
+import type { Config } from "@/core/types";
+import { type BrowserInstance, launchBrowser } from "./browser-manager.js";
+import { EventCapture } from "./event-capture.js";
+import { injectRecordingUI, removeRecordingUI } from "./recording-ui.js";
+import { takeScreenshot } from "./screenshot-manager.js";
+import { appendActions, loadStory } from "./story-updater.js";
 
 /**
  * Main recording orchestrator that coordinates all recorder components
@@ -41,8 +41,8 @@ export async function startRecording(storyId: string): Promise<void> {
           await appendActions(storyId, actions);
         } catch (error) {
           console.error(
-            chalk.red('Failed to capture snapshot:'),
-            error instanceof Error ? error.message : error
+            chalk.red("Failed to capture snapshot:"),
+            error instanceof Error ? error.message : error,
           );
         }
       },
@@ -71,12 +71,12 @@ export async function startRecording(storyId: string): Promise<void> {
           }
 
           // Show completion message
-          console.log(chalk.green('✓ Recording saved to story.yml'));
-          console.log(chalk.green('✓ Recording session completed'));
+          console.log(chalk.green("✓ Recording saved to story.yml"));
+          console.log(chalk.green("✓ Recording session completed"));
         } catch (error) {
           console.error(
-            chalk.red('Error during stop:'),
-            error instanceof Error ? error.message : error
+            chalk.red("Error during stop:"),
+            error instanceof Error ? error.message : error,
           );
           throw error;
         }
@@ -84,14 +84,12 @@ export async function startRecording(storyId: string): Promise<void> {
     });
 
     console.log(
-      chalk.gray(
-        'Use the recording UI in the browser to take snapshots or stop recording.\n'
-      )
+      chalk.gray("Use the recording UI in the browser to take snapshots or stop recording.\n"),
     );
 
     // 8. Wait for browser to close (user closes or clicks stop)
     await new Promise<void>((resolve) => {
-      browser.on('disconnected', async () => {
+      browser.on("disconnected", async () => {
         try {
           // 9. Auto-save any remaining actions before exit
           const pendingActions = eventCapture.getPendingActions();
@@ -101,8 +99,8 @@ export async function startRecording(storyId: string): Promise<void> {
           resolve();
         } catch (error) {
           console.error(
-            chalk.red('Error auto-saving on browser close:'),
-            error instanceof Error ? error.message : error
+            chalk.red("Error auto-saving on browser close:"),
+            error instanceof Error ? error.message : error,
           );
           resolve();
         }
@@ -111,41 +109,41 @@ export async function startRecording(storyId: string): Promise<void> {
 
     // 10. Clean up: stop app (browser already closed)
     if (cleanup && config) {
-      console.log(chalk.blue('🛑 Stopping app...'));
+      console.log(chalk.blue("🛑 Stopping app..."));
       await stopApp(cleanup, config);
       cleanup = null;
     }
 
-    console.log(chalk.green('✓ App stopped successfully'));
+    console.log(chalk.green("✓ App stopped successfully"));
   } catch (error) {
     // Error handling: Always attempt cleanup even on errors
     console.error(
-      chalk.red('❌ Recording failed:'),
-      error instanceof Error ? error.message : error
+      chalk.red("❌ Recording failed:"),
+      error instanceof Error ? error.message : error,
     );
 
     // Attempt cleanup
     try {
       if (browserInstance) {
-        console.log(chalk.yellow('Closing browser...'));
+        console.log(chalk.yellow("Closing browser..."));
         await browserInstance.browser.close();
       }
     } catch (cleanupError) {
       console.error(
-        chalk.red('Failed to close browser:'),
-        cleanupError instanceof Error ? cleanupError.message : cleanupError
+        chalk.red("Failed to close browser:"),
+        cleanupError instanceof Error ? cleanupError.message : cleanupError,
       );
     }
 
     try {
       if (cleanup && config) {
-        console.log(chalk.yellow('Stopping app...'));
+        console.log(chalk.yellow("Stopping app..."));
         await stopApp(cleanup, config);
       }
     } catch (cleanupError) {
       console.error(
-        chalk.red('Failed to stop app:'),
-        cleanupError instanceof Error ? cleanupError.message : cleanupError
+        chalk.red("Failed to stop app:"),
+        cleanupError instanceof Error ? cleanupError.message : cleanupError,
       );
     }
 

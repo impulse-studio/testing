@@ -1,14 +1,12 @@
-import { executeCommand, type RunningProcess } from './utils/execute-command.js';
-import type { Config } from './types.js';
+import type { Config } from "./types.js";
+import { executeCommand, type RunningProcess } from "./utils/execute-command.js";
 
 /**
  * Start the application using lifecycle.start commands
  * @param config The validated configuration object
  * @returns Cleanup function that stops all running processes
  */
-export async function startApp(
-  config: Config
-): Promise<() => Promise<void>> {
+export async function startApp(config: Config): Promise<() => Promise<void>> {
   const runningProcesses: RunningProcess[] = [];
 
   try {
@@ -23,7 +21,7 @@ export async function startApp(
     return async () => {
       for (const { process, command } of runningProcesses) {
         try {
-          process.kill('SIGTERM');
+          process.kill("SIGTERM");
           await process.catch(() => {
             // Ignore errors from killed processes
           });
@@ -36,7 +34,7 @@ export async function startApp(
     // If startup fails, cleanup any processes that were started
     for (const { process } of runningProcesses) {
       try {
-        process.kill('SIGTERM');
+        process.kill("SIGTERM");
         await process.catch(() => {});
       } catch {
         // Ignore cleanup errors

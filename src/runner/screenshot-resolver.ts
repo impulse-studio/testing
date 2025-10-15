@@ -1,6 +1,6 @@
-import { execa, type ResultPromise } from 'execa';
-import { copyFile } from 'node:fs/promises';
-import { select } from '@inquirer/prompts';
+import { copyFile } from "node:fs/promises";
+import { select } from "@inquirer/prompts";
+import { execa, type ResultPromise } from "execa";
 
 /**
  * Represents a screenshot mismatch that needs resolution
@@ -23,7 +23,7 @@ export interface ScreenshotMismatch {
 /**
  * User's choice for resolving a screenshot mismatch
  */
-export type ResolutionChoice = 'KEEP_OLD' | 'KEEP_NEW';
+export type ResolutionChoice = "KEEP_OLD" | "KEEP_NEW";
 
 /**
  * Result of resolving a screenshot mismatch
@@ -63,18 +63,15 @@ export interface ResolveScreenshotsOptions {
  * Open VS Code diff viewer for the two screenshots
  * Returns the subprocess so it can be killed after user makes their choice
  */
-function openDiffViewer(
-  oldPath: string,
-  newPath: string,
-): ResultPromise | null {
+function openDiffViewer(oldPath: string, newPath: string): ResultPromise | null {
   try {
     // Launch VS Code with diff view (attached to parent process)
-    const subprocess = execa('code', ['--diff', oldPath, newPath]);
+    const subprocess = execa("code", ["--diff", oldPath, newPath]);
     return subprocess;
-  } catch (error) {
+  } catch (_error) {
     // Silently fail if VS Code is not available
     // User will still see the interactive prompt
-    console.warn('Could not open VS Code diff viewer. Continuing with prompt...');
+    console.warn("Could not open VS Code diff viewer. Continuing with prompt...");
     return null;
   }
 }
@@ -83,14 +80,11 @@ function openDiffViewer(
  * Prompt user to choose resolution for screenshot mismatch
  * Uses @inquirer/prompts for interactive CLI selection
  */
-async function promptUserChoice(
-  mismatchName: string,
-  timeout: number,
-): Promise<ResolutionChoice> {
+async function promptUserChoice(mismatchName: string, timeout: number): Promise<ResolutionChoice> {
   const timeoutPromise = new Promise<ResolutionChoice>((resolve) => {
     setTimeout(() => {
       console.warn(`\nTimeout reached for ${mismatchName}. Defaulting to KEEP_OLD (fail test).`);
-      resolve('KEEP_OLD');
+      resolve("KEEP_OLD");
     }, timeout);
   });
 
@@ -98,14 +92,14 @@ async function promptUserChoice(
     message: `Resolve screenshot mismatch: ${mismatchName}`,
     choices: [
       {
-        name: 'Keep old screenshot (fail test)',
-        value: 'KEEP_OLD',
-        description: 'Keep the baseline screenshot and mark this test as failed',
+        name: "Keep old screenshot (fail test)",
+        value: "KEEP_OLD",
+        description: "Keep the baseline screenshot and mark this test as failed",
       },
       {
-        name: 'Accept new screenshot (update baseline)',
-        value: 'KEEP_NEW',
-        description: 'Replace the baseline with the new screenshot',
+        name: "Accept new screenshot (update baseline)",
+        value: "KEEP_NEW",
+        description: "Replace the baseline with the new screenshot",
       },
     ],
   });
@@ -127,7 +121,7 @@ async function resolveSingleMismatch(
   if (ciMode) {
     return {
       name: mismatch.name,
-      choice: 'KEEP_OLD',
+      choice: "KEEP_OLD",
       updated: false,
     };
   }
@@ -140,12 +134,12 @@ async function resolveSingleMismatch(
     const choice = await promptUserChoice(mismatch.name, timeout);
 
     // Handle the choice
-    if (choice === 'KEEP_NEW') {
+    if (choice === "KEEP_NEW") {
       // Copy new screenshot over old one
       await copyFile(mismatch.newPath, mismatch.oldPath);
       return {
         name: mismatch.name,
-        choice: 'KEEP_NEW',
+        choice: "KEEP_NEW",
         updated: true,
       };
     }
@@ -153,7 +147,7 @@ async function resolveSingleMismatch(
     // KEEP_OLD - mark as failed (no update needed)
     return {
       name: mismatch.name,
-      choice: 'KEEP_OLD',
+      choice: "KEEP_OLD",
       updated: false,
     };
   } finally {
@@ -161,7 +155,7 @@ async function resolveSingleMismatch(
     if (vscodeProcess) {
       try {
         vscodeProcess.kill();
-      } catch (error) {
+      } catch (_error) {
         // Gracefully handle errors if process is already terminated
         // This can happen if user manually closed VS Code
       }

@@ -1,4 +1,4 @@
-import { getCssSelector } from 'css-selector-generator';
+import { getCssSelector } from "css-selector-generator";
 
 /**
  * Generate a stable CSS selector for an element with priority:
@@ -8,7 +8,7 @@ import { getCssSelector } from 'css-selector-generator';
  */
 export function generateSelector(element: Element): string {
   // Priority 1: Check for unique ID
-  const id = element.getAttribute('id');
+  const id = element.getAttribute("id");
   if (id) {
     const selector = `#${id}`;
     // Validate that this selector returns exactly one element
@@ -19,7 +19,7 @@ export function generateSelector(element: Element): string {
   }
 
   // Priority 2: Check for data-testid or data-test attributes
-  const testId = element.getAttribute('data-testid');
+  const testId = element.getAttribute("data-testid");
   if (testId) {
     const selector = `[data-testid="${testId}"]`;
     // Validate uniqueness
@@ -29,7 +29,7 @@ export function generateSelector(element: Element): string {
     }
   }
 
-  const dataTest = element.getAttribute('data-test');
+  const dataTest = element.getAttribute("data-test");
   if (dataTest) {
     const selector = `[data-test="${dataTest}"]`;
     // Validate uniqueness
@@ -41,7 +41,7 @@ export function generateSelector(element: Element): string {
 
   // Priority 3: Use css-selector-generator for complex selectors
   const selector = getCssSelector(element, {
-    selectors: ['id', 'class', 'tag', 'attribute'],
+    selectors: ["id", "class", "tag", "attribute"],
     maxCombinations: 100,
   });
 
@@ -49,7 +49,7 @@ export function generateSelector(element: Element): string {
   const matches = document.querySelectorAll(selector);
   if (matches.length !== 1) {
     throw new Error(
-      `Generated selector "${selector}" matches ${matches.length} elements, expected exactly 1`
+      `Generated selector "${selector}" matches ${matches.length} elements, expected exactly 1`,
     );
   }
 

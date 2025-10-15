@@ -1,6 +1,6 @@
-import { access, readFile } from 'node:fs/promises';
-import { constants } from 'node:fs';
-import type { DetectorResult } from './docker-compose';
+import { constants } from "node:fs";
+import { access, readFile } from "node:fs/promises";
+import type { DetectorResult } from "./docker-compose";
 
 /**
  * Check if file exists
@@ -19,18 +19,18 @@ async function fileExists(path: string): Promise<boolean> {
  */
 async function getDevScript(): Promise<string> {
   try {
-    const packageJsonContent = await readFile('package.json', 'utf-8');
+    const packageJsonContent = await readFile("package.json", "utf-8");
     const packageJson = JSON.parse(packageJsonContent);
     const scripts = packageJson.scripts || {};
 
     // Priority: dev, start, serve
-    if (scripts.dev) return 'dev';
-    if (scripts.start) return 'start';
-    if (scripts.serve) return 'serve';
+    if (scripts.dev) return "dev";
+    if (scripts.start) return "start";
+    if (scripts.serve) return "serve";
 
-    return 'dev'; // fallback
+    return "dev"; // fallback
   } catch {
-    return 'dev';
+    return "dev";
   }
 }
 
@@ -38,7 +38,7 @@ async function getDevScript(): Promise<string> {
  * Detect Bun configuration
  */
 export async function detectBun(): Promise<DetectorResult | null> {
-  if (!(await fileExists('bun.lockb'))) {
+  if (!(await fileExists("bun.lockb"))) {
     return null;
   }
 

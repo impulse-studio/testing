@@ -1,6 +1,6 @@
-import { access } from 'node:fs/promises';
-import { constants } from 'node:fs';
-import type { LifecycleCommand } from '@/core/schemas/lifecycle-command-schema';
+import { constants } from "node:fs";
+import { access } from "node:fs/promises";
+import type { LifecycleCommand } from "@/core/schemas/lifecycle-command-schema";
 
 export interface DetectorResult {
   startCommands: LifecycleCommand[];
@@ -24,10 +24,10 @@ async function fileExists(path: string): Promise<boolean> {
  */
 export async function detectDockerCompose(): Promise<DetectorResult | null> {
   const possibleFiles = [
-    'docker-compose.yml',
-    'docker-compose.yaml',
-    'compose.yml',
-    'compose.yaml',
+    "docker-compose.yml",
+    "docker-compose.yaml",
+    "compose.yml",
+    "compose.yaml",
   ];
 
   for (const file of possibleFiles) {
@@ -35,13 +35,13 @@ export async function detectDockerCompose(): Promise<DetectorResult | null> {
       return {
         startCommands: [
           {
-            command: 'docker compose up',
+            command: "docker compose up",
             keepAlive: true,
           },
         ],
         stopCommands: [
           {
-            command: 'docker compose down -v',
+            command: "docker compose down -v",
           },
         ],
       };

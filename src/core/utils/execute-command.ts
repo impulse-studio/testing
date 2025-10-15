@@ -1,5 +1,5 @@
-import { execa } from 'execa';
-import type { LifecycleCommand } from '../types.js';
+import { execa } from "execa";
+import type { LifecycleCommand } from "../types.js";
 
 export interface RunningProcess {
   process: ReturnType<typeof execa>;
@@ -14,12 +14,12 @@ export interface RunningProcess {
  */
 export async function executeCommand(
   cmd: LifecycleCommand,
-  isBackground: boolean
+  isBackground: boolean,
 ): Promise<RunningProcess | null> {
   const timeout = cmd.timeout || 30000;
 
   // Split command into parts for execa
-  const [command, ...args] = cmd.command.split(' ');
+  const [command, ...args] = cmd.command.split(" ");
 
   // Check if command is defined
   if (!command) {

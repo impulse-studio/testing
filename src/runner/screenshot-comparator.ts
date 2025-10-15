@@ -1,9 +1,9 @@
-import type { Page } from 'puppeteer';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { join } from 'node:path';
-import pixelmatch from 'pixelmatch';
-import { PNG } from 'pngjs';
-import { SCREENSHOTS_DIR, TESTING_DIR } from '@/core/constants';
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import pixelmatch from "pixelmatch";
+import { PNG } from "pngjs";
+import type { Page } from "puppeteer";
+import { SCREENSHOTS_DIR, TESTING_DIR } from "@/core/constants";
 
 /**
  * Result of a screenshot comparison
@@ -53,20 +53,20 @@ export interface CompareScreenshotParams {
 async function takeViewportScreenshot(page: Page): Promise<Buffer> {
   // Hide the recording UI before taking screenshot
   await page.evaluate(() => {
-    const ui = document.getElementById('__impulse-testing__ui');
-    if (ui) ui.style.display = 'none';
+    const ui = document.getElementById("__impulse-testing__ui");
+    if (ui) ui.style.display = "none";
   });
 
   // Take screenshot (viewport only, not full page)
   const screenshot = await page.screenshot({
     fullPage: false,
-    type: 'png',
+    type: "png",
   });
 
   // Show the recording UI again after taking screenshot
   await page.evaluate(() => {
-    const ui = document.getElementById('__impulse-testing__ui');
-    if (ui) ui.style.display = '';
+    const ui = document.getElementById("__impulse-testing__ui");
+    if (ui) ui.style.display = "";
   });
 
   return screenshot as Buffer;
@@ -78,10 +78,7 @@ async function takeViewportScreenshot(page: Page): Promise<Buffer> {
  * @param img2 - Second PNG image
  * @returns Tuple of [img1, img2] with matching dimensions
  */
-function ensureSameDimensions(
-  img1: PNG,
-  img2: PNG,
-): [PNG, PNG] {
+function ensureSameDimensions(img1: PNG, img2: PNG): [PNG, PNG] {
   if (img1.width === img2.width && img1.height === img2.height) {
     return [img1, img2];
   }
@@ -125,19 +122,15 @@ export async function compareScreenshot(
   const newImg = PNG.sync.read(newScreenshotBuffer);
 
   // Try to load baseline screenshot
-  const baselinePath = join(
-    SCREENSHOTS_DIR,
-    storyId,
-    screenshotName,
-  );
+  const baselinePath = join(SCREENSHOTS_DIR, storyId, screenshotName);
 
   let baselineImg: PNG;
   try {
     const baselineBuffer = await readFile(baselinePath);
     baselineImg = PNG.sync.read(baselineBuffer);
-  } catch (error) {
+  } catch (_error) {
     // Baseline doesn't exist - treat as mismatch
-    const tempDir = join(TESTING_DIR, 'temp');
+    const tempDir = join(TESTING_DIR, "temp");
     await mkdir(tempDir, { recursive: true });
 
     const tempPath = join(tempDir, screenshotName);
@@ -151,10 +144,7 @@ export async function compareScreenshot(
   }
 
   // Ensure images have the same dimensions
-  const [paddedBaseline, paddedNew] = ensureSameDimensions(
-    baselineImg,
-    newImg,
-  );
+  const [paddedBaseline, paddedNew] = ensureSameDimensions(baselineImg, newImg);
 
   // Perform pixel-by-pixel comparison
   const { width, height } = paddedNew;
@@ -178,7 +168,7 @@ export async function compareScreenshot(
 
   // If mismatch, save new screenshot to temp directory
   if (!matches) {
-    const tempDir = join(TESTING_DIR, 'temp');
+    const tempDir = join(TESTING_DIR, "temp");
     await mkdir(tempDir, { recursive: true });
 
     const tempPath = join(tempDir, screenshotName);

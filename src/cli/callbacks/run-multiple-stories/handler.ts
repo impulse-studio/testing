@@ -1,66 +1,76 @@
-import chalk from 'chalk';
-import { runStory, type ExecutionResult, type ActionResult } from '@/runner';
-import type { Action, ScreenshotAction } from '@/core/types';
+import chalk from "chalk";
+import type { Action, ScreenshotAction } from "@/core/types";
+import { type ActionResult, type ExecutionResult, runStory } from "@/runner";
 
 /**
  * Format an action for display with its details
  */
 function formatAction(action: Action): string {
   switch (action.type) {
-    case 'click':
+    case "click":
       return `click ${chalk.gray(action.selector)}`;
-    case 'input':
+    case "input":
       return `input ${chalk.gray(action.selector)} ${chalk.gray(`(${action.value})`)}`;
-    case 'select':
+    case "select":
       return `select ${chalk.gray(action.selector)} ${chalk.gray(`(${action.value})`)}`;
-    case 'check':
-    case 'uncheck':
+    case "check":
+    case "uncheck":
       return `${action.type} ${chalk.gray(action.selector)}`;
-    case 'navigate':
+    case "navigate":
       return `navigate ${chalk.gray(action.url)}`;
-    case 'screenshot':
+    case "screenshot":
       return `screenshot ${chalk.gray(action.name)}`;
-    default:
+    default: {
       // This should never happen if all action types are handled
       const exhaustiveCheck: never = action;
       return String((exhaustiveCheck as Action).type);
+    }
   }
 }
 
 /**
  * Display a single action result with appropriate formatting
  */
-function displayActionResult(result: ActionResult, screenshotResolutions: ExecutionResult['screenshotResolutions']): void {
+function displayActionResult(
+  result: ActionResult,
+  screenshotResolutions: ExecutionResult["screenshotResolutions"],
+): void {
   const actionDisplay = formatAction(result.action);
 
   if (result.passed) {
     // Action passed
-    console.log(`   ${chalk.green('✓')} ${actionDisplay}`);
-  } else if (result.action.type === 'screenshot' && result.comparisonResult) {
+    console.log(`   ${chalk.green("✓")} ${actionDisplay}`);
+  } else if (result.action.type === "screenshot" && result.comparisonResult) {
     // Screenshot mismatch - check if it was resolved
     const screenshotAction = result.action as ScreenshotAction;
-    const resolution = screenshotResolutions.find(r => r.name === screenshotAction.name);
+    const resolution = screenshotResolutions.find((r) => r.name === screenshotAction.name);
 
     if (resolution) {
       if (resolution.accepted) {
         // Mismatch was accepted (KEEP_NEW)
-        console.log(`   ${chalk.green('✓')} ${actionDisplay} ${chalk.yellow('(updated baseline)')}`);
+        console.log(
+          `   ${chalk.green("✓")} ${actionDisplay} ${chalk.yellow("(updated baseline)")}`,
+        );
       } else {
         // Mismatch was rejected (KEEP_OLD)
-        console.log(`   ${chalk.yellow('⚠')} ${actionDisplay} ${chalk.yellow('(kept old baseline)')}`);
+        console.log(
+          `   ${chalk.yellow("⚠")} ${actionDisplay} ${chalk.yellow("(kept old baseline)")}`,
+        );
       }
     } else {
       // Mismatch not yet resolved (shouldn't happen in normal flow)
-      console.log(`   ${chalk.yellow('⚠')} ${actionDisplay} ${chalk.yellow('(mismatch detected)')}`);
+      console.log(
+        `   ${chalk.yellow("⚠")} ${actionDisplay} ${chalk.yellow("(mismatch detected)")}`,
+      );
     }
   } else {
     // Action failed
-    console.log(`   ${chalk.red('✗')} ${actionDisplay}`);
+    console.log(`   ${chalk.red("✗")} ${actionDisplay}`);
 
     if (result.error) {
-      console.log(`      ${chalk.red('Error:')} ${result.error.message}`);
+      console.log(`      ${chalk.red("Error:")} ${result.error.message}`);
       if (result.error.screenshotPath) {
-        console.log(`      ${chalk.gray('Screenshot:')} ${result.error.screenshotPath}`);
+        console.log(`      ${chalk.gray("Screenshot:")} ${result.error.screenshotPath}`);
       }
     }
   }
@@ -96,13 +106,13 @@ function displayStoryResult(result: ExecutionResult): void {
  * Display summary of all story executions
  */
 function displaySummary(results: ExecutionResult[]): void {
-  const passedCount = results.filter(r => r.success).length;
-  const failedCount = results.filter(r => !r.success).length;
+  const passedCount = results.filter((r) => r.success).length;
+  const failedCount = results.filter((r) => !r.success).length;
 
-  console.log(chalk.bold('\n📊 Summary\n'));
+  console.log(chalk.bold("\n📊 Summary\n"));
   console.log(`   Total: ${results.length}`);
-  console.log(`   ${chalk.green('Passed:')} ${passedCount}`);
-  console.log(`   ${chalk.red('Failed:')} ${failedCount}`);
+  console.log(`   ${chalk.green("Passed:")} ${passedCount}`);
+  console.log(`   ${chalk.red("Failed:")} ${failedCount}`);
   console.log();
 }
 
@@ -144,7 +154,7 @@ export async function handleRunMultipleStories(storyIds: string[]): Promise<void
   displaySummary(results);
 
   // Exit with appropriate code
-  const hasFailures = results.some(r => !r.success);
+  const hasFailures = results.some((r) => !r.success);
   if (hasFailures) {
     process.exit(1);
   }

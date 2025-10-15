@@ -1,12 +1,12 @@
-(function() {
+(() => {
   // Check if UI already exists
-  if (document.getElementById('__impulse-testing__ui')) {
+  if (document.getElementById("__impulse-testing__ui")) {
     return;
   }
 
   // Create container
-  const container = document.createElement('div');
-  container.id = '__impulse-testing__ui';
+  const container = document.createElement("div");
+  container.id = "__impulse-testing__ui";
   container.innerHTML = `
     <div id="__impulse-testing__panel">
   <div id="__impulse-testing__drag-handle">
@@ -31,7 +31,7 @@
   `;
 
   // Create and inject styles
-  const style = document.createElement('style');
+  const style = document.createElement("style");
   style.textContent = `
 #__impulse-testing__panel {
   position: fixed;
@@ -96,24 +96,24 @@
   document.body.appendChild(container);
 
   // Add event listeners
-  const stopBtn = document.getElementById('__impulse-testing__stop-btn');
-  const snapshotBtn = document.getElementById('__impulse-testing__snapshot-btn');
+  const stopBtn = document.getElementById("__impulse-testing__stop-btn");
+  const snapshotBtn = document.getElementById("__impulse-testing__snapshot-btn");
 
   if (stopBtn) {
-    stopBtn.addEventListener('click', () => {
+    stopBtn.addEventListener("click", () => {
       window.__impulse_onStop();
     });
   }
 
   if (snapshotBtn) {
-    snapshotBtn.addEventListener('click', () => {
+    snapshotBtn.addEventListener("click", () => {
       window.__impulse_onSnapshot();
     });
   }
 
   // Make the panel draggable
-  const panel = document.getElementById('__impulse-testing__panel');
-  const dragHandle = document.getElementById('__impulse-testing__drag-handle');
+  const panel = document.getElementById("__impulse-testing__panel");
+  const dragHandle = document.getElementById("__impulse-testing__drag-handle");
 
   if (panel && dragHandle) {
     let isDragging = false;
@@ -122,13 +122,13 @@
     let initialX = 0;
     let initialY = 0;
 
-    dragHandle.addEventListener('mousedown', (e) => {
+    dragHandle.addEventListener("mousedown", (e) => {
       isDragging = true;
       initialX = e.clientX - currentX;
       initialY = e.clientY - currentY;
     });
 
-    document.addEventListener('mousemove', (e) => {
+    document.addEventListener("mousemove", (e) => {
       if (!isDragging) return;
 
       e.preventDefault();
@@ -140,7 +140,7 @@
       }
     });
 
-    document.addEventListener('mouseup', () => {
+    document.addEventListener("mouseup", () => {
       isDragging = false;
     });
   }
