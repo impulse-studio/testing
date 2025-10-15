@@ -15,7 +15,7 @@
     "impulse-testing": "./bin/impulse-testing.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsup",
     "dev": "sh -c 'cd demo && tsx --tsconfig=../tsconfig.json ../src/cli/index.ts \"$@\" && cd ..' -- ",
     "start": "node dist/cli/index.js",
     "format": "biome format --write src/",
@@ -38,6 +38,7 @@
     "@types/node": "^24.7.2",
     "@types/pixelmatch": "^5.2.6",
     "@types/pngjs": "^6.0.5",
+    "tsup": "^8.3.5",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"
   },
