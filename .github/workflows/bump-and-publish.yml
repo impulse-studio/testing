@@ -100,10 +100,94 @@ jobs:
                   npm config set @impulselab:registry https://registry.npmjs.org/
                   pnpm publish --access public --no-git-checks
 
+            # Deploy to production by creating tag and updating main branch
             - name: Create and push Git tag
               run: |
                   git tag v${{ steps.bump.outputs.version }}
                   git push origin v${{ steps.bump.outputs.version }}
+
+            - name: Update main to tag commit
+              run: |
+                  git fetch origin main --prune
+                  git checkout -B main
+                  git push origin main --force-with-lease
+
+            - name: Send Discord deployment notification
+              if: success()
+              env:
+                  DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+              run: |
+                  # Extract metadata
+                  TAG_NAME="v${{ steps.bump.outputs.version }}"
+                  TAG_SHA="${{ github.sha }}"
+                  SHORT_SHA=$(echo "$TAG_SHA" | cut -c1-7)
+                  REPO_URL="https://github.com/${{ github.repository }}"
+                  COMMIT_URL="${REPO_URL}/commit/${TAG_SHA}"
+                  WORKFLOW_URL="${REPO_URL}/actions/runs/${{ github.run_id }}"
+                  TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+                  PROJECT_NAME=$(jq -r '.name' package.json)
+
+                  # Build Discord embed payload
+                  PAYLOAD=$(cat <<EOF
+                  {
+                    "embeds": [{
+                      "title": "✅ Production Deployment Successful",
+                      "color": 3066993,
+                      "fields": [
+                        {
+                          "name": "Project",
+                          "value": "${PROJECT_NAME}",
+                          "inline": true
+                        },
+                        {
+                          "name": "Environment",
+                          "value": "production",
+                          "inline": true
+                        },
+                        {
+                          "name": "Tag Version",
+                          "value": "${TAG_NAME}",
+                          "inline": true
+                        },
+                        {
+                          "name": "Commit",
+                          "value": "[${SHORT_SHA}](${COMMIT_URL})",
+                          "inline": true
+                        },
+                        {
+                          "name": "Deployed At",
+                          "value": "${TIMESTAMP}",
+                          "inline": true
+                        },
+                        {
+                          "name": "Workflow Run",
+                          "value": "[View Run](${WORKFLOW_URL})",
+                          "inline": true
+                        }
+                      ],
+                      "timestamp": "${TIMESTAMP}"
+                    }]
+                  }
+                  EOF
+                  )
+
+                  # Send to Discord webhook
+                  if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+                    echo "⚠️ DISCORD_WEBHOOK_URL secret is not set. Skipping notification."
+                    exit 0
+                  fi
+
+                  HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+                    -H "Content-Type: application/json" \
+                    -d "$PAYLOAD" \
+                    "$DISCORD_WEBHOOK_URL")
+
+                  if [ "$HTTP_STATUS" -eq 204 ] || [ "$HTTP_STATUS" -eq 200 ]; then
+                    echo "✅ Discord notification sent successfully (HTTP $HTTP_STATUS)"
+                  else
+                    echo "⚠️ Failed to send Discord notification (HTTP $HTTP_STATUS)"
+                    exit 1
+                  fi
 
             - name: Create GitHub Release
               uses: softprops/action-gh-release@v2
