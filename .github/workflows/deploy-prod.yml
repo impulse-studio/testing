@@ -1,0 +1,111 @@
+name: Production Tag Deployment
+
+on:
+  push:
+    tags:
+      - "*" # any tag denotes a production release tag
+
+jobs:
+  Deploy-Production:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # required to push to main
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Determine tag commit
+        id: tag
+        run: |
+          echo "tag_name=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+          tag_sha=$(git rev-list -n 1 "$GITHUB_REF_NAME")
+          echo "tag_sha=$tag_sha" >> $GITHUB_OUTPUT
+
+      - name: Update main to tag commit (no merge/squash)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git fetch origin main --prune
+          git checkout -B main "${{ steps.tag.outputs.tag_sha }}"
+          git push origin main --force-with-lease
+
+      - name: Send Discord deployment notification
+        if: success()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          TAG_NAME: ${{ steps.tag.outputs.tag_name }}
+          TAG_SHA: ${{ steps.tag.outputs.tag_sha }}
+        run: |
+          # Extract metadata
+          SHORT_SHA=$(echo "$TAG_SHA" | cut -c1-7)
+          REPO_URL="https://github.com/${{ github.repository }}"
+          COMMIT_URL="${REPO_URL}/commit/${TAG_SHA}"
+          WORKFLOW_URL="${REPO_URL}/actions/runs/${{ github.run_id }}"
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          PROJECT_NAME=$(jq -r '.name' package.json)
+
+          # Build Discord embed payload
+          PAYLOAD=$(cat <<EOF
+          {
+            "embeds": [{
+              "title": "✅ Production Deployment Successful",
+              "color": 3066993,
+              "fields": [
+                {
+                  "name": "Project",
+                  "value": "${PROJECT_NAME}",
+                  "inline": true
+                },
+                {
+                  "name": "Environment",
+                  "value": "production",
+                  "inline": true
+                },
+                {
+                  "name": "Tag Version",
+                  "value": "${TAG_NAME}",
+                  "inline": true
+                },
+                {
+                  "name": "Commit",
+                  "value": "[${SHORT_SHA}](${COMMIT_URL})",
+                  "inline": true
+                },
+                {
+                  "name": "Deployed At",
+                  "value": "${TIMESTAMP}",
+                  "inline": true
+                },
+                {
+                  "name": "Workflow Run",
+                  "value": "[View Run](${WORKFLOW_URL})",
+                  "inline": true
+                }
+              ],
+              "timestamp": "${TIMESTAMP}"
+            }]
+          }
+          EOF
+          )
+
+          # Send to Discord webhook
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "⚠️ DISCORD_WEBHOOK_URL secret is not set. Skipping notification."
+            exit 0
+          fi
+
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$DISCORD_WEBHOOK_URL")
+
+          if [ "$HTTP_STATUS" -eq 204 ] || [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "✅ Discord notification sent successfully (HTTP $HTTP_STATUS)"
+          else
+            echo "⚠️ Failed to send Discord notification (HTTP $HTTP_STATUS)"
+            exit 1
+          fi

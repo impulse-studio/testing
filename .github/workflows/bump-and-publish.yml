@@ -1,0 +1,143 @@
+name: Bump & Publish
+
+on:
+    workflow_dispatch:
+        inputs:
+            release:
+                description: "Version bump type (major | minor | patch)"
+                required: true
+                default: patch
+                type: choice
+                options:
+                    - patch
+                    - minor
+                    - major
+
+jobs:
+    bump-and-publish:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            packages: write
+        if: github.ref == 'refs/heads/dev'
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Setup Node
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "22"
+                  registry-url: "https://registry.npmjs.org"
+                  scope: "@impulselab"
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  version: 10.15.0
+
+            - name: Verify npm auth
+              env:
+                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+              run: |
+                  if [ -z "${NODE_AUTH_TOKEN}" ]; then
+                    echo "NPM token is missing. Set repository secret NPM_TOKEN with publish permissions." >&2
+                    exit 1
+                  fi
+                  npm whoami --registry=https://registry.npmjs.org || { echo "npm auth failed. Check token scope." >&2; exit 1; }
+
+            - name: Install
+              run: pnpm install --frozen-lockfile
+
+            - name: Configure Git
+              run: |
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+            - name: Bump version in package.json
+              id: bump
+              env:
+                  RELEASE: ${{ github.event.inputs.release }}
+              run: |
+                  bump() {
+                    local file=$1
+                    local release=$2
+                    current=$(jq -r '.version' "$file")
+                    IFS='.' read -r major minor patch <<< "$current"
+                    case "$release" in
+                      major)
+                        major=$((major+1)); minor=0; patch=0;;
+                      minor)
+                        minor=$((minor+1)); patch=0;;
+                      patch)
+                        patch=$((patch+1));;
+                      *) echo "Invalid release type: $release"; exit 1;;
+                    esac
+                    new="${major}.${minor}.${patch}"
+                    tmp=$(mktemp)
+                    jq --arg v "$new" '.version = $v' "$file" > "$tmp" && mv "$tmp" "$file"
+                    echo "$new"
+                  }
+                  NEW_VER=$(bump package.json "$RELEASE")
+                  echo "version=$NEW_VER" >> $GITHUB_OUTPUT
+
+            - name: Commit version bumps
+              run: |
+                  git add package.json
+                  git commit -m "chore(release): bump versions (version: ${{ steps.bump.outputs.version }})"
+                  git push
+
+            - name: Build workspace
+              run: pnpm -r --filter="!demo" build
+
+            - name: Publish @impulselab/testing
+              env:
+                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+              run: |
+                  npm config set //registry.npmjs.org/:_authToken "$NODE_AUTH_TOKEN"
+                  npm config set @impulselab:registry https://registry.npmjs.org/
+                  pnpm publish --access public --no-git-checks
+
+            - name: Create and push Git tag
+              run: |
+                  git tag v${{ steps.bump.outputs.version }}
+                  git push origin v${{ steps.bump.outputs.version }}
+
+            - name: Create GitHub Release
+              uses: softprops/action-gh-release@v2
+              with:
+                  tag_name: v${{ steps.bump.outputs.version }}
+                  name: Release v${{ steps.bump.outputs.version }}
+                  body: |
+                      Release v${{ steps.bump.outputs.version }}
+
+                      **Package Versions:**
+                      - @impulselab/testing: v${{ steps.bump.outputs.version }}
+                  generate_release_notes: true
+                  token: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@v3
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Log in to GitHub Container Registry
+              uses: docker/login-action@v3
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Build and push Docker image
+              uses: docker/build-push-action@v5
+              with:
+                  context: .
+                  file: Dockerfile
+                  platforms: linux/amd64,linux/arm64
+                  push: true
+                  tags: |
+                      ghcr.io/${{ github.repository_owner }}/testing:latest
+                      ghcr.io/${{ github.repository_owner }}/testing:${{ steps.bump.outputs.version }}
