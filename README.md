@@ -21,7 +21,7 @@ Impulse Testing is a modern E2E testing library built on Puppeteer that allows y
 Run Impulse Testing for the first time to set up your project:
 
 ```bash
-npx impulse-testing --init
+npx @impulselab/testing --init
 ```
 
 The interactive onboarding will:
@@ -35,7 +35,7 @@ The interactive onboarding will:
 Create a new test by recording your interactions:
 
 ```bash
-npx impulse-testing --new
+npx @impulselab/testing --new
 ```
 
 Then:
@@ -53,7 +53,7 @@ Your interactions are saved as a reusable YAML story in `.testing/stories/{story
 #### Interactive Mode (Local Development)
 
 ```bash
-npx impulse-testing
+npx @impulselab/testing
 ```
 
 Select a story from the list and watch it execute. If screenshots differ, you'll see a visual diff and can choose to accept or reject changes.
@@ -61,7 +61,7 @@ Select a story from the list and watch it execute. If screenshots differ, you'll
 #### CI Mode (Automated Testing)
 
 ```bash
-npx impulse-testing --ci
+npx @impulselab/testing --ci
 ```
 
 Runs all stories headlessly with automatic failure on screenshot mismatches. Perfect for CI/CD pipelines.
@@ -71,7 +71,7 @@ Runs all stories headlessly with automatic failure on screenshot mismatches. Per
 ### Default Mode (Interactive)
 
 ```bash
-npx impulse-testing
+npx @impulselab/testing
 ```
 
 Opens an interactive shell where you can:
@@ -82,7 +82,7 @@ Opens an interactive shell where you can:
 ### Recording Mode
 
 ```bash
-npx impulse-testing --new
+npx @impulselab/testing --new
 ```
 
 Directly starts the story creation flow, skipping the interactive menu.
@@ -90,7 +90,7 @@ Directly starts the story creation flow, skipping the interactive menu.
 ### CI/CD Mode
 
 ```bash
-npx impulse-testing --ci
+npx @impulselab/testing --ci
 ```
 
 Runs all stories in non-interactive mode:
@@ -102,20 +102,20 @@ Runs all stories in non-interactive mode:
 
 ```bash
 # Run a single story
-npx impulse-testing --story user-login
+npx @impulselab/testing --story user-login
 
 # Run multiple stories
-npx impulse-testing --story login --story checkout --story profile
+npx @impulselab/testing --story login --story checkout --story profile
 
 # Run specific stories in CI mode
-npx impulse-testing --ci --story login --story checkout
+npx @impulselab/testing --ci --story login --story checkout
 ```
 
 ### Help and Version
 
 ```bash
-npx impulse-testing --help
-npx impulse-testing --version
+npx @impulselab/testing --help
+npx @impulselab/testing --version
 ```
 
 ## Configuration
@@ -228,7 +228,7 @@ Impulse Testing automatically generates stable CSS selectors using this priority
 
 ### Recording Workflow
 
-1. **Start Recording**: Run `npx impulse-testing --new`
+1. **Start Recording**: Run `npx @impulselab/testing --new`
 2. **Provide Metadata**: Enter story name, ID, and start URL
 3. **Interact Naturally**: Click, type, and navigate as a real user would
 4. **Capture Snapshots**: Click "Take Snapshot" button at key moments to capture visual states
@@ -239,7 +239,7 @@ Impulse Testing automatically generates stable CSS selectors using this priority
 
 #### Local Development
 
-1. **Run Interactive Mode**: `npx impulse-testing`
+1. **Run Interactive Mode**: `npx @impulselab/testing`
 2. **Select Story**: Choose from the list of available stories
 3. **Watch Execution**: See each action execute in real-time
 4. **Review Results**: If screenshots differ:
@@ -249,7 +249,7 @@ Impulse Testing automatically generates stable CSS selectors using this priority
 
 #### CI/CD Pipeline
 
-1. **Add to Pipeline**: Add `npx impulse-testing --ci` to your CI config
+1. **Add to Pipeline**: Add `npx @impulselab/testing --ci` to your CI config
 2. **Automatic Execution**: All stories run headlessly without user interaction
 3. **Screenshot Validation**: Any pixel differences cause test failure
 4. **Exit Codes**:
@@ -272,7 +272,7 @@ jobs:
         with:
           node-version: '18'
       - run: npm install
-      - run: npx impulse-testing --ci
+      - run: npx @impulselab/testing --ci
 ```
 
 ## Screenshot Comparison
@@ -338,8 +338,8 @@ When differences are detected:
 
 ```bash
 # Clone repository
-git clone https://github.com/your-org/impulse-testing.git
-cd impulse-testing
+git clone https://github.com/impulse-studio/testing.git
+cd testing
 
 # Install dependencies
 pnpm install
