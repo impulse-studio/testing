@@ -1,6 +1,6 @@
 {
   "name": "@impulselab/testing",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "E2E testing library with Puppeteer for browser automation",
   "type": "module",
   "main": "./dist/cli/index.js",
