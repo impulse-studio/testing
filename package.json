@@ -1,5 +1,5 @@
 {
-  "name": "@impulse/testing",
+  "name": "@impulselab/testing",
   "version": "0.0.0",
   "description": "E2E testing library with Puppeteer for browser automation",
   "type": "module",
