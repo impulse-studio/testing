@@ -90,7 +90,7 @@ jobs:
                   git push
 
             - name: Build workspace
-              run: pnpm -r --filter="!demo" build
+              run: pnpm build
 
             - name: Publish @impulselab/testing
               env:
