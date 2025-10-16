@@ -91,8 +91,22 @@ Prompts for:
 - **Command**: Shell command string
 - **Keep Alive**: Boolean (runs indefinitely if true)
 - **Timeout**: Number (only if keepAlive is false)
+- **Environment Variables**: Optional key-value pairs (interactive prompt to add variables)
 
 Validates using Zod schema from `src/core/schemas/lifecycle-command-schema.ts`
+
+#### Environment Variable Flow
+
+When adding environment variables:
+1. Shows existing environment variables if editing a command
+2. Prompts to add environment variables (defaults to true if command already has variables)
+3. Interactive loop to add variable name/value pairs
+4. Variable names must start with letter/underscore and contain only alphanumeric/underscore characters
+5. Leave name empty to finish adding variables
+6. In command list, displays count with proper singular/plural:
+   - `(envs: 1 variable)` for a single environment variable
+   - `(envs: 2 variables)` for multiple environment variables
+   - Individual key-value pairs are never displayed in the list
 
 ## Auto-Detection Priority
 
@@ -274,6 +288,20 @@ lifecycle:
     - command: pkill -f "npm run dev"
 ```
 
+**Project with Environment Variables:**
+```yaml
+lifecycle:
+  start:
+    - command: npm run dev
+      keepAlive: true
+      envs:
+        NODE_ENV: development
+        PORT: "3000"
+        DEBUG: "true"
+  stop:
+    - command: pkill -f "npm run dev"
+```
+
 ## Future Enhancements
 
 The following are NOT yet implemented:
@@ -281,7 +309,6 @@ The following are NOT yet implemented:
 - Screenshot settings configuration (threshold editing)
 - Command reordering (drag-and-drop)
 - Command grouping
-- Environment variable configuration
 - Database lifecycle commands
 - Custom detector plugins
 

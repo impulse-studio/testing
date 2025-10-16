@@ -1,16 +1,17 @@
 lifecycle:
   start:
-    - command: "echo 'Start database here'"
+    - command: echo 'Start database here'
       timeout: 30000
-    - command: "pnpm dev"
+    - command: pnpm dev
       keepAlive: true
+      envs:
+        TEST: value
+        ANOTHER_TEST: anothervalue
   stop:
-    - command: "echo 'Stop database here'"
+    - command: echo 'Stop database here'
       timeout: 10000
-
 screenshots:
-  diffThreshold: 0 # percentage of pixels that can differ (0-100).
-
+  diffThreshold: 0
 output:
   console: true
   text: true

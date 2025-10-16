@@ -5,6 +5,7 @@ export const lifecycleCommandSchema = z
     command: z.string(),
     timeout: z.number().optional(),
     keepAlive: z.boolean().optional(),
+    envs: z.record(z.string(), z.string()).optional(),
   })
   .refine((data) => !(data.timeout !== undefined && data.keepAlive === true), {
     message:

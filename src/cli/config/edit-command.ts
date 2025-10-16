@@ -47,14 +47,69 @@ export async function editCommand(
       }
     }
 
-    // 4. Build command object
+    // 4. Ask about environment variables
+    let envs: Record<string, string> | undefined;
+
+    // Display existing environment variables if editing
+    if (existingCommand?.envs && Object.keys(existingCommand.envs).length > 0) {
+      console.log("\nCurrent environment variables:");
+      for (const [key, value] of Object.entries(existingCommand.envs)) {
+        console.log(`  ${key}=${value}`);
+      }
+      console.log("");
+    }
+
+    const addEnvs = await confirm({
+      message: "Add environment variables?",
+      default: existingCommand?.envs !== undefined && Object.keys(existingCommand.envs).length > 0,
+    });
+
+    if (addEnvs) {
+      envs = {};
+      console.log("\nEnter environment variables (leave name empty to finish):");
+
+      while (true) {
+        const envName = await input({
+          message: "Environment variable name:",
+          default: "",
+          validate: (value) => {
+            if (value.trim() === "") return true; // empty means done
+            // Basic validation: alphanumeric and underscore, can't start with number
+            if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(value.trim())) {
+              return "Variable name must start with a letter or underscore and contain only letters, numbers, and underscores";
+            }
+            return true;
+          },
+        });
+
+        // Empty name means user is done adding variables
+        if (envName.trim() === "") {
+          break;
+        }
+
+        const envValue = await input({
+          message: `Value for ${envName}:`,
+          default: "",
+        });
+
+        envs[envName.trim()] = envValue;
+      }
+
+      // If no variables were actually added, set envs to undefined
+      if (Object.keys(envs).length === 0) {
+        envs = undefined;
+      }
+    }
+
+    // 5. Build command object
     const commandObj: LifecycleCommand = {
       command: command.trim(),
       ...(keepAlive ? { keepAlive: true } : {}),
       ...(timeout !== undefined ? { timeout } : {}),
+      ...(envs !== undefined ? { envs } : {}),
     };
 
-    // 5. Validate with schema
+    // 6. Validate with schema
     try {
       lifecycleCommandSchema.parse(commandObj);
     } catch (error) {

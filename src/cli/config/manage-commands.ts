@@ -19,6 +19,13 @@ function formatCommand(cmd: LifecycleCommand, index: number): string {
     parts.push(chalk.dim(`(timeout: ${cmd.timeout}ms)`));
   }
 
+  // Display environment variables if they exist
+  if (cmd.envs && Object.keys(cmd.envs).length > 0) {
+    const envCount = Object.keys(cmd.envs).length;
+    const label = envCount === 1 ? "variable" : "variables";
+    parts.push(chalk.dim(`(envs: ${envCount} ${label})`));
+  }
+
   return `${index + 1}. ${parts.join(" ")}`;
 }
 

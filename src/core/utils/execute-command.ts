@@ -26,6 +26,9 @@ export async function executeCommand(
     throw new Error(`Invalid command: ${cmd.command}`);
   }
 
+  // Compute environment variables before creating local process variable
+  const envVars = cmd.envs ? { ...process.env, ...cmd.envs } : process.env;
+
   if (isBackground || cmd.keepAlive) {
     // Start process in background - no timeout since it runs indefinitely
     // The process will be manually killed later via the cleanup function
@@ -33,6 +36,7 @@ export async function executeCommand(
       cleanup: true,
       detached: false,
       // Don't pass timeout - this process runs until manually killed
+      env: envVars,
     });
 
     // Don't await, just return the process
@@ -40,6 +44,9 @@ export async function executeCommand(
   }
 
   // Execute synchronously and wait for completion
-  await execa(command, args, { timeout });
+  await execa(command, args, {
+    timeout,
+    env: envVars,
+  });
   return null;
 }
