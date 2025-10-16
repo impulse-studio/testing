@@ -19,6 +19,8 @@ function formatAction(action: Action): string {
       return `${action.type} ${chalk.gray(action.selector)}`;
     case "navigate":
       return `navigate ${chalk.gray(action.url)}`;
+    case "waitForNavigation":
+      return `wait for navigation`;
     case "screenshot":
       return `screenshot ${chalk.gray(action.name)}`;
     default: {
