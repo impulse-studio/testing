@@ -46,6 +46,10 @@ export interface NavigateAction extends BaseAction {
   url: string;
 }
 
+export interface WaitForNavigationAction extends BaseAction {
+  type: "waitForNavigation";
+}
+
 export interface ScreenshotAction extends BaseAction {
   type: "screenshot";
   name: string;
@@ -57,6 +61,7 @@ export type Action =
   | SelectAction
   | CheckAction
   | NavigateAction
+  | WaitForNavigationAction
   | ScreenshotAction;
 
 export interface Story {

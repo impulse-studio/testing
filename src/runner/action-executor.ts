@@ -113,6 +113,18 @@ export async function executeAction(page: Page, action: Action): Promise<void> {
         break;
       }
 
+      case "waitForNavigation": {
+        // Wait for navigation that was triggered by a previous action
+        // This is used for automatic redirects (e.g., post-login redirects)
+        // The previous action (click/input) already triggered the navigation
+        // We just need to wait for it to complete to preserve cookies
+        await page.waitForNavigation({
+          waitUntil: "networkidle2",
+          timeout: DEFAULT_TIMEOUT,
+        });
+        break;
+      }
+
       case "screenshot": {
         // Screenshot actions are handled externally by the runner
         // This should not be called directly through executeAction

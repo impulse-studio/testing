@@ -31,6 +31,7 @@ export class EventCapture {
   private pendingActions: Action[] = [];
   private inputTracking = new Map<string, string>();
   private lastUrl = "";
+  private lastInteractionTime = 0;
 
   constructor(page: Page) {
     this.page = page;
@@ -61,10 +62,22 @@ export class EventCapture {
       if (frame === this.page.mainFrame()) {
         const newUrl = this.page.url();
         if (newUrl !== this.lastUrl) {
-          this.pendingActions.push({
-            type: "navigate",
-            url: newUrl,
-          });
+          // Check if navigation occurred within 1 second of last interaction
+          const timeSinceInteraction = Date.now() - this.lastInteractionTime;
+
+          if (timeSinceInteraction <= 1000) {
+            // Automatic redirect (likely caused by previous action)
+            this.pendingActions.push({
+              type: "waitForNavigation",
+            });
+          } else {
+            // Manual navigation
+            this.pendingActions.push({
+              type: "navigate",
+              url: newUrl,
+            });
+          }
+
           this.lastUrl = newUrl;
 
           // Re-inject listeners after navigation
@@ -89,6 +102,7 @@ export class EventCapture {
     switch (event.type) {
       case "click":
         if (event.selector) {
+          this.lastInteractionTime = Date.now();
           this.pendingActions.push({
             type: "click",
             selector: event.selector,
@@ -105,6 +119,7 @@ export class EventCapture {
 
       case "change":
         if (event.selector) {
+          this.lastInteractionTime = Date.now();
           if (event.inputType === "select" && event.value !== undefined) {
             this.pendingActions.push({
               type: "select",
