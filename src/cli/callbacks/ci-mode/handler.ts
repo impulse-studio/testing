@@ -30,9 +30,10 @@ function formatAction(action: Action): string {
 }
 
 /**
- * Display a single action result with appropriate formatting (CI mode)
+ * Display a single action as it completes (real-time display)
+ * In CI mode, screenshot mismatches are always shown as failures (no resolution UI)
  */
-function displayActionResult(result: ActionResult): void {
+function displayActionInProgress(result: ActionResult): void {
   const actionDisplay = formatAction(result.action);
 
   if (result.passed) {
@@ -55,16 +56,10 @@ function displayActionResult(result: ActionResult): void {
 }
 
 /**
- * Display results for a single story execution (CI mode)
+ * Display final summary for a story execution (CI mode)
+ * Actions are displayed in real-time via callback, this only shows the final result
  */
 function displayStoryResult(result: ExecutionResult): void {
-  console.log(chalk.blue(`\n▶ Running story: ${result.storyId}\n`));
-
-  // Display action-by-action results
-  for (const actionResult of result.actionResults) {
-    displayActionResult(actionResult);
-  }
-
   // Display final summary
   console.log();
   if (result.success) {
@@ -152,7 +147,18 @@ export async function handleCIMode(storyIds: string[]): Promise<void> {
   // Run each story sequentially
   for (const storyId of storiesToRun) {
     try {
-      const result = await runStory(storyId, { ciMode: true });
+      // Display story header before execution starts
+      console.log(chalk.blue(`\n▶ Running story: ${storyId}\n`));
+
+      // Run the story with real-time action display
+      const result = await runStory(storyId, {
+        ciMode: true,
+        // Display each action as it completes
+        onActionComplete: (actionResult) => {
+          displayActionInProgress(actionResult);
+        },
+      });
+
       results.push(result);
       displayStoryResult(result);
     } catch (error) {

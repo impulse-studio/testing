@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import type { Action, ScreenshotAction } from "@/core/types";
+import type { Action } from "@/core/types";
 import { type ActionResult, type ExecutionResult, runStory } from "@/runner";
 
 /**
@@ -29,40 +29,18 @@ function formatAction(action: Action): string {
 }
 
 /**
- * Display a single action result with appropriate formatting
+ * Display a single action as it completes (real-time display)
+ * For screenshot mismatches, shows a warning since resolution happens later
  */
-function displayActionResult(
-  result: ActionResult,
-  screenshotResolutions: ExecutionResult["screenshotResolutions"],
-): void {
+function displayActionInProgress(result: ActionResult): void {
   const actionDisplay = formatAction(result.action);
 
   if (result.passed) {
     // Action passed
     console.log(`   ${chalk.green("✓")} ${actionDisplay}`);
   } else if (result.action.type === "screenshot" && result.comparisonResult) {
-    // Screenshot mismatch - check if it was resolved
-    const screenshotAction = result.action as ScreenshotAction;
-    const resolution = screenshotResolutions.find((r) => r.name === screenshotAction.name);
-
-    if (resolution) {
-      if (resolution.accepted) {
-        // Mismatch was accepted (KEEP_NEW)
-        console.log(
-          `   ${chalk.green("✓")} ${actionDisplay} ${chalk.yellow("(updated baseline)")}`,
-        );
-      } else {
-        // Mismatch was rejected (KEEP_OLD)
-        console.log(
-          `   ${chalk.yellow("⚠")} ${actionDisplay} ${chalk.yellow("(kept old baseline)")}`,
-        );
-      }
-    } else {
-      // Mismatch not yet resolved (shouldn't happen in normal flow)
-      console.log(
-        `   ${chalk.yellow("⚠")} ${actionDisplay} ${chalk.yellow("(mismatch detected)")}`,
-      );
-    }
+    // Screenshot mismatch - show as warning (will be resolved later)
+    console.log(`   ${chalk.yellow("⚠")} ${actionDisplay} ${chalk.yellow("(mismatch detected)")}`);
   } else {
     // Action failed
     console.log(`   ${chalk.red("✗")} ${actionDisplay}`);
@@ -78,13 +56,24 @@ function displayActionResult(
 
 /**
  * Display results for a single story execution
+ * Handles the story header, screenshot resolutions, and final summary
  */
 function displayStoryResult(result: ExecutionResult): void {
-  console.log(chalk.blue(`\n▶ Running story: ${result.storyId}\n`));
-
-  // Display action-by-action results
-  for (const actionResult of result.actionResults) {
-    displayActionResult(actionResult, result.screenshotResolutions);
+  // Display screenshot resolutions if any occurred
+  if (result.screenshotResolutions.length > 0) {
+    console.log();
+    console.log(chalk.blue("Screenshot resolutions:"));
+    for (const resolution of result.screenshotResolutions) {
+      if (resolution.accepted) {
+        console.log(
+          `   ${chalk.green("✓")} ${chalk.gray(resolution.name)} ${chalk.yellow("(updated baseline)")}`,
+        );
+      } else {
+        console.log(
+          `   ${chalk.yellow("⚠")} ${chalk.gray(resolution.name)} ${chalk.yellow("(kept old baseline)")}`,
+        );
+      }
+    }
   }
 
   // Display final summary
@@ -128,7 +117,17 @@ export async function handleRunMultipleStories(storyIds: string[]): Promise<void
   // Run each story sequentially
   for (const storyId of storyIds) {
     try {
-      const result = await runStory(storyId);
+      // Display story header before execution starts
+      console.log(chalk.blue(`\n▶ Running story: ${storyId}\n`));
+
+      // Run the story with real-time action display
+      const result = await runStory(storyId, {
+        // Display each action as it completes
+        onActionComplete: (actionResult) => {
+          displayActionInProgress(actionResult);
+        },
+      });
+
       results.push(result);
       displayStoryResult(result);
     } catch (error) {

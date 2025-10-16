@@ -154,6 +154,12 @@ export interface RunStoryOptions {
    * @default false
    */
   ciMode?: boolean;
+  /**
+   * Optional callback that is called after each action completes
+   * Useful for real-time logging or progress tracking
+   * @param result - The result of the completed action
+   */
+  onActionComplete?: (result: ActionResult) => void | Promise<void>;
 }
 
 /**
@@ -228,6 +234,11 @@ export async function runStory(
         );
         actionResults.push(result);
 
+        // Call the callback if provided
+        if (options.onActionComplete) {
+          await options.onActionComplete(result);
+        }
+
         // If screenshot mismatch, queue for later resolution
         if (!result.passed && result.comparisonResult?.newScreenshotPath) {
           const baselinePath = join(SCREENSHOTS_DIR, storyId, action.name);
@@ -242,6 +253,11 @@ export async function runStory(
         // Handle non-screenshot action
         const result = await executeNonScreenshotAction(page, action, i);
         actionResults.push(result);
+
+        // Call the callback if provided
+        if (options.onActionComplete) {
+          await options.onActionComplete(result);
+        }
 
         // If action failed, we continue with remaining actions
         // (but the story will ultimately fail)
