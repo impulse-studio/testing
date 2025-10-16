@@ -7,6 +7,8 @@ import { executeCommand } from "./utils/execute-command.js";
  * @param config The validated configuration object
  */
 export async function stopApp(cleanup: () => Promise<void>, config: Config): Promise<void> {
+  console.log();
+
   // First, execute the cleanup function to stop running processes
   await cleanup();
 

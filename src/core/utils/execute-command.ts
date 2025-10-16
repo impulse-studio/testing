@@ -1,3 +1,4 @@
+import chalk from "chalk";
 import { execa } from "execa";
 import type { LifecycleCommand } from "../types.js";
 
@@ -30,9 +31,12 @@ export async function executeCommand(
   const envVars = cmd.envs ? { ...process.env, ...cmd.envs } : process.env;
 
   if (isBackground || cmd.keepAlive) {
+    // Log execution start for background process - only show "Executing" since it runs indefinitely
+    process.stdout.write(`${chalk.cyan("Executing:")} ${chalk.dim(cmd.command)}\n`);
+
     // Start process in background - no timeout since it runs indefinitely
     // The process will be manually killed later via the cleanup function
-    const process = execa(command, args, {
+    const childProcess = execa(command, args, {
       cleanup: true,
       detached: false,
       // Don't pass timeout - this process runs until manually killed
@@ -40,13 +44,21 @@ export async function executeCommand(
     });
 
     // Don't await, just return the process
-    return { process, command: cmd.command };
+    // Skip "Executed" message for background processes since they run indefinitely
+    return { process: childProcess, command: cmd.command };
   }
+
+  // Log execution start for synchronous command (without newline)
+  process.stdout.write(`${chalk.cyan("Executing:")} ${chalk.dim(cmd.command)}`);
 
   // Execute synchronously and wait for completion
   await execa(command, args, {
     timeout,
     env: envVars,
   });
+
+  // Clear the line and overwrite with success message
+  process.stdout.write(`\r\x1b[K${chalk.green("Executed :")} ${chalk.dim(cmd.command)}\n`);
+
   return null;
 }

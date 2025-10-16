@@ -2,6 +2,8 @@ lifecycle:
   start:
     - command: echo 'Start database here'
       timeout: 30000
+    - command: sleep 5
+      timeout: 10000
     - command: pnpm dev
       keepAlive: true
       envs:

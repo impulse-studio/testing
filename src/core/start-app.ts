@@ -19,6 +19,8 @@ export async function startApp(config: Config, url?: string): Promise<() => Prom
       }
     }
 
+    console.log();
+
     // Wait for URL to become available if:
     // 1. A URL was provided AND
     // 2. At least one command has keepAlive: true
