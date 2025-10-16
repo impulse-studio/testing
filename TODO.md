@@ -23,6 +23,7 @@
 - [x] Project type auto-detection (Docker Compose, pnpm, npm, Bun, Yarn)
 - [x] .gitignore integration (.testing/.gitignore with temp/ exclusion)
 - [x] Centralized config validation at CLI entry point
+- [x] Environment variable support for lifecycle commands
 
 ## High Priority
 - [ ] HTML report generation
