@@ -21,7 +21,7 @@ export async function startRecording(storyId: string): Promise<void> {
   try {
     config = await loadConfig();
     const story = await loadStory(storyId);
-    cleanup = await startApp(config);
+    cleanup = await startApp(config, story.start.url);
     browserInstance = await launchBrowser(story);
     const { browser, page } = browserInstance;
 

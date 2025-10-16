@@ -1,12 +1,14 @@
 import type { Config } from "./types.js";
 import { executeCommand, type RunningProcess } from "./utils/execute-command.js";
+import { waitForUrl } from "./utils/wait-for-url.js";
 
 /**
  * Start the application using lifecycle.start commands
  * @param config The validated configuration object
+ * @param url Optional URL to wait for after starting commands with keepAlive
  * @returns Cleanup function that stops all running processes
  */
-export async function startApp(config: Config): Promise<() => Promise<void>> {
+export async function startApp(config: Config, url?: string): Promise<() => Promise<void>> {
   const runningProcesses: RunningProcess[] = [];
 
   try {
@@ -15,6 +17,14 @@ export async function startApp(config: Config): Promise<() => Promise<void>> {
       if (runningProcess) {
         runningProcesses.push(runningProcess);
       }
+    }
+
+    // Wait for URL to become available if:
+    // 1. A URL was provided AND
+    // 2. At least one command has keepAlive: true
+    const hasKeepAliveCommand = config.lifecycle.start.some((cmd) => cmd.keepAlive);
+    if (url && hasKeepAliveCommand) {
+      await waitForUrl(url);
     }
 
     // Return cleanup function

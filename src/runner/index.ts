@@ -204,7 +204,7 @@ export async function runStory(
     const story = await loadStory(storyId);
 
     // 3. Start application
-    cleanup = await startApp(config);
+    cleanup = await startApp(config, story.start.url);
 
     // 4. Launch browser
     browserInstance = await launchBrowser(story);
